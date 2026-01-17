@@ -1,0 +1,13 @@
+open_meteo:
+  latitude: 4.7110
+  longitude: -74.0721
+  timezone: America/Bogota
+  hourly:
+    - temperature_2m
+    - relative_humidity_2m
+    - wind_speed_10m
+  start_date: "2024-01-01"
+  end_date: "2024-06-30"
+
+paths:
+  raw_dir: data/raw

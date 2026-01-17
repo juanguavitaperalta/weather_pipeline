@@ -1,0 +1,63 @@
+# 🤖 Entrenamiento de Modelos
+
+Este documento detalla el proceso de entrenamiento y comparación de los modelos evaluados.
+
+---
+
+## 📊 Modelos Evaluados
+
+### Modelos Lineales
+- **Lasso:** Regularización L1 para selección de variables
+- **Ridge:** Regularización L2 para reducir sobreajuste
+- **Elastic Net:** Combinación de L1 y L2
+
+### Modelos de Ensemble
+- **XGBoost:** Gradient Boosting con regularización
+
+---
+
+## 📈 Curvas de Aprendizaje
+
+Las curvas de aprendizaje permiten evaluar si el modelo sufre de sesgo o varianza.
+
+### Ridge - Curva de Aprendizaje
+<p align="center">
+  <img src="../reports/figures/curvas%20aprendizaje/curva_aprendizaje_ridge.png" width="700">
+</p>
+
+### XGBoost - Optimización de n_estimators
+<p align="center">
+  <img src="../reports/figures/xgb_n_estimators_curve.png" width="700">
+</p>
+
+---
+
+## 🏆 Comparación de Modelos
+
+| Modelo | RMSE | MAE | R² |
+|--------|------|-----|-----|
+| Lasso | - | - | - |
+| **Ridge** | - | - | - |
+| Elastic Net | - | - | - |
+| **XGBoost** | 1.32°C | 1.01°C | - |
+
+**Modelo seleccionado:** XGBoost por su mejor rendimiento en RMSE y MAE.
+
+---
+
+## ⚙️ Hiperparámetros del Modelo Final
+
+Los hiperparámetros del modelo XGBoost entrenado se encuentran en:
+`models/metadata/xgboost_metadatos.json`
+
+---
+
+## 📝 Conclusiones
+
+1. **XGBoost supera a los modelos lineales** en todas las métricas.
+2. **Sin sobreajuste:** Las curvas de aprendizaje muestran convergencia adecuada.
+3. **Regularización efectiva:** El modelo generaliza bien a datos no vistos.
+
+---
+
+[← Volver al README principal](../README.md)

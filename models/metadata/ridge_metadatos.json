@@ -1,0 +1,44 @@
+{
+    "nombre_modelo": "Ridge",
+    "fecha_entrenamiento": "2026-01-12T17:04:00.900701",
+    "version": "1.0.0",
+    "target": "temperature_2m_target",
+    "metricas": {
+        "test_rmse": 1.512740910075386,
+        "test_mae": 1.1941428838811303,
+        "cv_rmse": 1.6969705029198754,
+        "cv_mae": 1.3561289890551893
+    },
+    "hiperparametros": {
+        "ridge__alpha": 2.6366508987303554
+    },
+    "features": [
+        "temperature_2m",
+        "relative_humidity_2m",
+        "wind_speed_10m",
+        "temperature_2m_lag_1",
+        "temperature_2m_lag_2",
+        "temperature_2m_lag_3",
+        "temperature_2m_lag_24",
+        "wind_speed_10m_lag_1",
+        "wind_speed_10m_lag_2",
+        "wind_speed_10m_lag_6",
+        "wind_speed_10m_lag_12",
+        "wind_speed_10m_lag_24",
+        "relative_humidity_2m_lag_1",
+        "relative_humidity_2m_lag_2",
+        "relative_humidity_2m_lag_36",
+        "relative_humidity_2m_lag_12",
+        "relative_humidity_2m_lag_24",
+        "dayofweek",
+        "month",
+        "hour",
+        "sin_comp",
+        "cos_comp"
+    ],
+    "n_features": 22,
+    "n_muestras_train": 2889,
+    "n_muestras_test": 723,
+    "ruta_modelo": "models/ridge_final.joblib",
+    "ruta_curva_aprendizaje": "reports/figures/curvas aprendizaje/curva_aprendizaje_ridge.png"
+}

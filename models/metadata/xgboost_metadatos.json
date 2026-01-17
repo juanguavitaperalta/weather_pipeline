@@ -1,0 +1,52 @@
+{
+    "nombre_modelo": "XGBoost Regressor",
+    "fecha_entrenamiento": "2026-01-12T17:05:01.542292",
+    "version": "1.0.0",
+    "target": "temperature_2m_target",
+    "metricas": {
+        "test_rmse": 1.0026417292867666,
+        "test_mae": 0.7584448603343831,
+        "cv_rmse": 1.1638474230200053,
+        "cv_mae": 0.9072681017378017
+    },
+    "hiperparametros": {
+        "subsample": 0.6,
+        "reg_lambda": 1.0,
+        "reg_alpha": 0.1,
+        "min_child_weight": 3,
+        "max_depth": 6,
+        "learning_rate": 0.01,
+        "gamma": 0.5,
+        "colsample_bytree": 0.8
+    },
+    "n_estimators_optimo": 569,
+    "features": [
+        "temperature_2m",
+        "relative_humidity_2m",
+        "wind_speed_10m",
+        "temperature_2m_lag_1",
+        "temperature_2m_lag_2",
+        "temperature_2m_lag_3",
+        "temperature_2m_lag_24",
+        "wind_speed_10m_lag_1",
+        "wind_speed_10m_lag_2",
+        "wind_speed_10m_lag_6",
+        "wind_speed_10m_lag_12",
+        "wind_speed_10m_lag_24",
+        "relative_humidity_2m_lag_1",
+        "relative_humidity_2m_lag_2",
+        "relative_humidity_2m_lag_36",
+        "relative_humidity_2m_lag_12",
+        "relative_humidity_2m_lag_24",
+        "dayofweek",
+        "month",
+        "hour",
+        "sin_comp",
+        "cos_comp"
+    ],
+    "n_features": 22,
+    "n_muestras_train": 2889,
+    "n_muestras_test": 723,
+    "ruta_modelo": "models/xgboost_final.joblib",
+    "ruta_curva_aprendizaje": "reports/figures/xgb_n_estimators_curve.png"
+}
