@@ -72,15 +72,14 @@ Debido a que al aumentar los lags, aumenta la incertidumbre, entonces debemos se
 
 - **PACF (Partial Autocorrelation Function):** Mide la correlación directa entre diferentes instantes, controlando por los valores intermedios.
 
----
-
-## 🔗 Correlación Cruzada
-
 La correlación cruzada identifica qué valores pasados de las variables independientes ayudan a explicar los valores futuros de la temperatura.
 
 En esta grafica se puede observar que los dos primeros lags (1 y 2), presentan alta dependencia.
 
 Conclusión: Se seleccionaran los Lags 1, 2, 3 y 24 para la generación de información en el dataset para la variable de tremperatura.
+---
+## 🔗 Correlación Cruzada
+
 ### Temperatura vs Humedad Relativa
 <p align="center">
   <img src="../reports/analisis_temporal/crosscorr/cross_corr_temperature_2m_relative_humidity_2m.png" width="700">
