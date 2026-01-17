@@ -21,6 +21,6 @@ Reglas:
 
 2. Coherencia de Blques. Lags con mismo signo, magnitud similar reflejar fenomeno fisico o estacionario. Sin embargo, no utilizamos todos los lags del bloque. Suele seleccionarse uno tardio, uno temprano o el de mayopr magnitud absoluta. Reucira colinealidad y complejidad inncesaria.
 
-Wind speed lags seleccionados: 0, 1, 2, 6, 12, 24.
-relative humidity: 0, 1, 6, 12, 24
+Wind speed lags seleccionados: 1, 2, 6, 12, 24.
+relative humidity: 1, 6, 12, 24
 
