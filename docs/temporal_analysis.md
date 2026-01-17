@@ -54,7 +54,23 @@ El análisis de autocorrelación permite identificar la relación de la temperat
 </p>
 
 **Interpretación:**
-- **ACF (Autocorrelation Function):** Mide la correlación lineal entre la serie temporal en un instante de tiempo y ella misma desplazada k periodos.
+- **ACF (Autocorrelation Function):** Mide la correlación lineal entre la serie temporal en un instante de tiempo y ella misma desplazada k periodos, para este caso horas. Para el gráfico de la variable objetivo, presenta un comportamiento ciclico, el cual es esperable por su comportamiento ciclico.
+
+Si esta correlación es significativa, superará la bandas para determinar que son estadisticamente significativas. Estas bandas en la teoria, deberian ser estables bajo las siguientes condiciones:
+1. Es una serie estacionaria.
+2. Varianza aproximadamente constante.
+3. Ruido es blanco, media igual a cero, varianza constantante, no hay memoria temporal.
+
+Sin embargo, las bandas presentan un comportamiento creciente, debido a las siguientes razones:
+
+1. Cuando se presenta un mayor k de retraso, existen menos observaciones disponibles y mayor varianza, contrdiciendo el principio de ruido blanco (var k).
+
+Debido a que al aumentar los lags, aumenta la incertidumbre, entonces debemos seleccionar lags pequeños que superen el intervalo de confianza y aquellos que representen el periodo de la señal de oscionacion envolvente.
+
+2. Al ser una variable ciclica, esta presenta estacionalidad y tienen una memoria temporal fuerte. 
+3. Al ver la gráfica de la temperatura, la media es difetente de cero.
+
+
 - **PACF (Partial Autocorrelation Function):** Mide la correlación directa entre diferentes instantes, controlando por los valores intermedios.
 
 ---
