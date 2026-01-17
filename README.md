@@ -4,7 +4,28 @@
 ![ML](https://img.shields.io/badge/ML-XGBoost-green.svg)
 ![Status](https://img.shields.io/badge/Status-Production-brightgreen.svg)
 
-Pipeline de Machine Learning para forecasting de temperatura a corto plazo utilizando datos meteorológicos de Open-Meteo.
+## Introducción
+
+Este proyecto implementa un pipeline industrial de Machine Learning para forecasting de temperatura a corto plazo. En este Pipeline aplicamos los siguientes conceptos y algoritmos:
+
+1. **Análisis exploratorio:** Generación de métricas de estadística descriptiva para analizar el comportamiento de las variables del dataset. Medidas necesarias para tomar decisiones adecuadas en la limpieza de datos.
+
+2. **Análisis temporal:** Análisis del comportamiento de las variables en función del tiempo.
+   - **Variable objetivo (Temperatura):**
+     - *ACF:* Medimos la correlación lineal entre la serie temporal en un instante de tiempo y ella misma desplazada k periodos para determinar relaciones entre instantes.
+     - *PACF:* Mide correlación directa de la serie entre diferentes instantes de tiempo. Intenta explicar si hay relaciones entre instantes que no hayan sido identificados en iteraciones anteriores.
+   - **Variables independientes (Velocidad del viento y humedad relativa):**
+     - *Correlación cruzada:* Entre estas variables y la temperatura se utilizó para identificar qué valores pasados de las variables independientes ayudan a explicar los valores futuros de la variable objetivo.
+   
+   De este análisis se genera un documento con el criterio de selección de lags para las variables del dataset.
+
+3. **Limpieza y preparación del dataset:** La identificación de los lags permite generar nuevas variables en el dataset más variables que representan ciclos temporales, para representar el comportamiento cíclico de las variables climáticas.
+
+4. **Entrenamiento de modelos:** Los siguientes modelos fueron evaluados para comparación y selección:
+   - Lasso, Ridge y Elastic Net
+   - XGBoost
+
+5. **Predicción y comparación** de rendimiento vs modelo comercial Prophet.
 
 ## 🎯 Resultados
 
@@ -17,65 +38,120 @@ Pipeline de Machine Learning para forecasting de temperatura a corto plazo utili
   <img src="reports/figures/predicciones/comparacion_xgboost_prophet.png" width="700">
 </p>
 
-## 🚀 Quick Start
-
-```bash
-# Clonar e instalar
-git clone https://github.com/tu-usuario/weather_pipeline.git
-cd weather_pipeline
-python -m venv .venv
-.venv\Scripts\Activate.ps1  # Windows
-pip install -r requirements.txt
-
-# Ejecutar pipeline completo
-python src/ingest.py              # Descargar datos
-python src/clean.py               # Limpiar datos
-python src/features.py            # Crear features
-python src/train.py --stage xgboost  # Entrenar modelo
-python src/predict.py             # Generar predicciones
-```
-
 ## 📁 Estructura del Proyecto
 
 ```
 weather_pipeline/
-├── configs/config.yaml        # Configuración API y rutas
+├── configs/
+│   └── config.yaml           # Configuración de API y rutas
 ├── data/
-│   ├── raw/                   # Datos crudos
-│   ├── processed/             # Datos limpios
-│   └── features/              # Features para entrenamiento
-├── models/                    # Modelos entrenados (.joblib)
-├── reports/figures/           # Gráficas y resultados
-├── src/                       # Código fuente
-└── docs/                      # Documentación detallada
+│   ├── raw/                  # Datos crudos descargados
+│   ├── processed/            # Datos limpios
+│   ├── features/             # Features para entrenamiento
+│   └── predict_data/         # Datos y resultados de predicción
+├── docs/                     # Documentación detallada
+├── models/
+│   ├── xgboost_final.joblib  # Modelo entrenado
+│   └── metadata/             # Metadatos del modelo
+├── reports/
+│   ├── analisis_temporal/    # Gráficas ACF, PACF, cross-correlation
+│   └── figures/              # Gráficas de predicción y SHAP
+├── src/
+│   ├── ingest.py             # Descarga de datos
+│   ├── explore.py            # Análisis exploratorio
+│   ├── clean.py              # Limpieza de datos
+│   ├── features.py           # Ingeniería de características
+│   ├── temporal_diagnostics.py # Diagnósticos de series temporales
+│   ├── train.py              # Entrenamiento de modelos
+│   ├── predict.py            # Predicción y comparación
+│   └── utils.py              # Utilidades
+└── tests/
+    └── test_clean.py         # Tests unitarios
+```
+
+## 🚀 Instalación
+
+```bash
+# Crear entorno virtual
+python -m venv .venv
+
+# Activar entorno (Windows)
+.venv\Scripts\Activate.ps1
+
+# Instalar dependencias
+pip install -r requirements.txt
 ```
 
 ## 📊 Pipeline de ML
 
 ```mermaid
 graph LR
-    A[Ingesta] --> B[Limpieza]
-    B --> C[Análisis Temporal]
-    C --> D[Feature Engineering]
-    D --> E[Entrenamiento]
-    E --> F[Predicción]
+    A[Ingesta] --> B[Exploración]
+    B --> C[Limpieza]
+    C --> D[Análisis Temporal]
+    D --> E[Feature Engineering]
+    E --> F[Entrenamiento]
+    F --> G[Predicción]
 ```
 
-| Etapa | Script | Descripción |
-|-------|--------|-------------|
-| Ingesta | `ingest.py` | Descarga datos de Open-Meteo |
-| Exploración | `explore.py` | Estadísticas descriptivas |
-| Limpieza | `clean.py` | Tratamiento de datos faltantes |
-| Diagnósticos | `temporal_diagnostics.py` | ACF, PACF, cross-correlation |
-| Features | `features.py` | Lags temporales y estacionalidad |
-| Entrenamiento | `train.py` | Ridge, XGBoost, SHAP |
-| Predicción | `predict.py` | Forecasting y comparación |
+### Flujo de Ejecución
 
-## 🔧 Features del Modelo
+| Etapa | Script | Comando | Descripción |
+|-------|--------|---------|-------------|
+| 1. Ingesta | `ingest.py` | `python src/ingest.py` | Descarga datos de Open-Meteo |
+| 2. Exploración | `explore.py` | `python src/explore.py` | Estadísticas descriptivas |
+| 3. Limpieza | `clean.py` | `python src/clean.py` | Tratamiento de datos faltantes |
+| 4. Diagnósticos | `temporal_diagnostics.py` | `python src/temporal_diagnostics.py` | ACF, PACF, cross-correlation |
+| 5. Features | `features.py` | `python src/features.py` | Lags temporales y estacionalidad |
+| 6. Entrenamiento | `train.py` | `python src/train.py --stage xgboost` | Ridge, XGBoost, SHAP |
+| 7. Predicción | `predict.py` | `python src/predict.py` | Forecasting y comparación |
 
-- **Variables meteorológicas:** temperatura, humedad relativa, velocidad del viento
+### Opciones de Entrenamiento
+
+```bash
+python src/train.py --stage separar_datos      # Solo separar datos
+python src/train.py --stage lineales           # Entrenar modelos lineales
+python src/train.py --stage xgboost            # Entrenar XGBoost (default)
+python src/train.py --stage curvas_aprendizaje # Curvas de aprendizaje
+python src/train.py --stage shap               # Análisis SHAP
+```
+
+## ⚙️ Configuración
+
+Editar `configs/config.yaml`:
+
+```yaml
+open_meteo:
+  latitude: 4.7110
+  longitude: -74.0721
+  timezone: America/Bogota
+  hourly:
+    - temperature_2m
+    - relative_humidity_2m
+    - wind_speed_10m
+  start_date: "2024-01-01"
+  end_date: "2024-06-30"
+
+paths:
+  raw_dir: data/raw
+```
+
+## 🔧 Features Utilizadas
+
+- **Variables meteorológicas:** `temperature_2m`, `relative_humidity_2m`, `wind_speed_10m`
 - **Lags temporales:** 1, 2, 3, 6, 12, 24 horas
-- **Estacionalidad:** hora, día de semana, mes, componentes cíclicos (sin/cos)
+- **Estacionalidad:** `hour`, `dayofweek`, `month`, `sin_comp`, `cos_comp`
+
+## 📂 Archivos de Salida
+
+| Archivo | Descripción |
+|---------|-------------|
+| `models/xgboost_final.joblib` | Modelo XGBoost entrenado |
+| `models/metadata/xgboost_metadatos.json` | Hiperparámetros y métricas |
+| `data/predict_data/predicciones_junio.xlsx` | Predicciones XGBoost |
+| `data/predict_data/comparacion_modelos.xlsx` | XGBoost vs Prophet |
+| `reports/figures/predicciones/` | Gráficas de predicción |
+| `reports/figures/shap/` | Análisis SHAP |
 
 ## 📚 Documentación Detallada
 
@@ -88,18 +164,6 @@ graph LR
 | [Interpretabilidad SHAP](docs/interpretability.md) | Explicabilidad del modelo |
 | [Selección de Lags](docs/lag_selection.md) | Criterios de selección de variables |
 
-## ⚙️ Configuración
-
-Editar `configs/config.yaml`:
-
-```yaml
-open_meteo:
-  latitude: 4.7110      # Bogotá, Colombia
-  longitude: -74.0721
-  start_date: "2024-01-01"
-  end_date: "2024-06-30"
-```
-
 ## 🧪 Tests
 
 ```bash
@@ -110,7 +174,7 @@ pytest tests/
 
 - **Horizonte de predicción:** 3 horas
 - **Datos de entrenamiento:** Enero - Mayo 2024
-- **Datos de validación:** Junio 2024
+- **Datos de predicción:** Junio 2024
 - **API:** Open-Meteo (gratuita, sin API key)
 
 ## 📄 Licencia
