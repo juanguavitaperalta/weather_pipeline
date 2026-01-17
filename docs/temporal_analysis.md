@@ -94,7 +94,7 @@ Conclusión: Se seleccionaran los Lags 1, 2, 3 y 24 para la generación de infor
 ---
 
 ## 📝 Conclusiones del Análisis Temporal
-
+## 
 1. **Estacionalidad clara:** Se observa un patrón diario (24 horas) en la temperatura.
 2. **Lags significativos (Temperatura):** Los lags 1, 2, 3 y 24 horas muestran correlación significativa.
 3. **Correlación cruzada:** La humedad relativa tiene correlación negativa con la temperatura en lags de 6-12 horas.
