@@ -9,7 +9,7 @@ Marco conseptual:
 Para cada variable exogena x, se evalua la correlación:
 
 $$
-\rho(k) = \operatorname{corr}\!\left(x(t-k),\, y(t+h)\right)
+\rho(k) = \text{corr}\left(x(t-k),\, y(t+h)\right)
 $$
 
 donde y(t+h) es la variable objetivo desplazada al horizonte de prediccón.
