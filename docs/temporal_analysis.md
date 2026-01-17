@@ -63,13 +63,12 @@ Si esta correlación es significativa, superará la bandas para determinar que s
 
 Sin embargo, las bandas presentan un comportamiento creciente, debido a las siguientes razones:
 
-1. Cuando se presenta un mayor k de retraso, existen menos observaciones disponibles y mayor varianza, contrdiciendo el principio de ruido blanco (var k).
+1. Cuando se presenta un mayor k de retraso, existen menos observaciones disponibles y mayor varianza, contradiciendo el principio de ruido blanco (var k).
 
-Debido a que al aumentar los lags, aumenta la incertidumbre, entonces debemos seleccionar lags pequeños que superen el intervalo de confianza y aquellos que representen el periodo de la señal de oscionacion envolvente.
+Debido a que al aumentar los lags, aumenta la incertidumbre, entonces debemos seleccionar lags pequeños que superen el intervalo de confianza y aquellos que representen el periodo de la señal de oscilación envolvente.
 
-2. Al ser una variable ciclica, esta presenta estacionalidad y tienen una memoria temporal fuerte. 
-3. Al ver la gráfica de la temperatura, la media es difetente de cero.
-
+2. Al ser una variable cíclica, esta presenta estacionalidad y tiene una memoria temporal fuerte. 
+3. Al ver la gráfica de la temperatura, la media es diferente de cero.
 
 - **PACF (Partial Autocorrelation Function):** Mide la correlación directa entre diferentes instantes, controlando por los valores intermedios.
 
@@ -79,6 +78,9 @@ Debido a que al aumentar los lags, aumenta la incertidumbre, entonces debemos se
 
 La correlación cruzada identifica qué valores pasados de las variables independientes ayudan a explicar los valores futuros de la temperatura.
 
+En esta grafica se puede observar que los dos primeros lags (1 y 2), presentan alta dependencia.
+
+Conclusión: Se seleccionaran los Lags 1, 2, 3 y 24 para la generación de información en el dataset para la variable de tremperatura.
 ### Temperatura vs Humedad Relativa
 <p align="center">
   <img src="../reports/analisis_temporal/crosscorr/cross_corr_temperature_2m_relative_humidity_2m.png" width="700">
@@ -94,7 +96,7 @@ La correlación cruzada identifica qué valores pasados de las variables indepen
 ## 📝 Conclusiones del Análisis Temporal
 
 1. **Estacionalidad clara:** Se observa un patrón diario (24 horas) en la temperatura.
-2. **Lags significativos:** Los lags 1, 2, 3, 6, 12 y 24 horas muestran correlación significativa.
+2. **Lags significativos (Temperatura):** Los lags 1, 2, 3 y 24 horas muestran correlación significativa.
 3. **Correlación cruzada:** La humedad relativa tiene correlación negativa con la temperatura en lags de 6-12 horas.
 
 Para más detalles sobre la selección de lags, ver [Selección de Lags](lag_selection.md).
