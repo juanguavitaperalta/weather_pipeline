@@ -112,20 +112,6 @@ Lags seleccionados: **[1, 2, 6, 12, 24]**
 
 ---
 
-## 📝 Conclusiones del Análisis Temporal
-## 
-1. **Estacionalidad clara:** Se observa un patrón diario (24 horas) en la temperatura.
-2. **Lags significativos (Temperatura):** Los lags 1, 2, 3 y 24 horas muestran correlación significativa.
-3. **Correlación cruzada:** La humedad relativa tiene correlación negativa con la temperatura en lags de 6-12 horas.
-
-Para más detalles sobre la selección de lags, ver [Selección de Lags](lag_selection.md).
-
----
-
-[← Volver al README principal](../README.md)
-
----
-
 ## 📝 Conclusiones integrales del Análisis Temporal
 
 1. **Estacionalidad marcada:** Las variables meteorológicas, especialmente la temperatura y la humedad relativa, presentan un claro patrón diario, reflejando la influencia del ciclo día-noche en el clima.
@@ -135,3 +121,13 @@ Para más detalles sobre la selección de lags, ver [Selección de Lags](lag_sel
 3. **Importancia de los lags:** El análisis de autocorrelación y correlación cruzada permitió identificar lags significativos para cada variable. 
 
 4. **Implicaciones para el modelado:** El conocimiento de la estacionalidad y la memoria temporal de las variables es fundamental para construir modelos robustos y precisos, evitando la inclusión de lags irrelevantes y maximizando la información útil.
+
+Para más detalles sobre la selección de lags, ver [Selección de Lags](lag_selection.md).
+
+---
+
+[← Volver al README principal](../README.md)
+
+---
+
+
