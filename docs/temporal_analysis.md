@@ -85,6 +85,19 @@ Conclusión: Se seleccionaran los Lags 1, 2, 3 y 24 para la generación de infor
   <img src="../reports/analisis_temporal/crosscorr/cross_corr_temperature_2m_relative_humidity_2m.png" width="700">
 </p>
 
+La correlación cruzada permite entender qué tan útil es una variable independiente desplazada k lags para explicar la variable objetivo en un horizonte futuro de h horas. Para este proyecto, h = 3 horas.
+
+Como se observa, la correlación presenta un patrón sinusoidal, similar al comportamiento de la temperatura. Esto indica que la humedad relativa tiene un componente cíclico de frecuencia diaria y comparte estacionalidad con la variable objetivo.
+
+- **Picos positivos:** Humedad menor en el pasado → temperaturas altas.
+- **Picos negativos:** Humedad mayor en el pasado → temperaturas bajas.
+
+Analizando la gráfica, se seleccionan los siguientes lags para esta variable: lags = [1, 2, 12, 24, 36].
+
+- Los lags 1 y 2 se eligen porque muestran una alta correlación inmediata.
+- Los lags 12, 24 y 36 permiten capturar el comportamiento cíclico y la estacionalidad diaria en la relación entre la humedad desplazada y la temperatura futura.
+
+
 ### Temperatura vs Velocidad del Viento
 <p align="center">
   <img src="../reports/analisis_temporal/crosscorr/cross_corr_temperature_2m_wind_speed_10m.png" width="700">
