@@ -97,11 +97,18 @@ Analizando la gráfica, se seleccionan los siguientes lags para esta variable: l
 - Los lags 1 y 2 se eligen porque muestran una alta correlación inmediata.
 - Los lags 12, 24 y 36 permiten capturar el comportamiento cíclico y la estacionalidad diaria en la relación entre la humedad desplazada y la temperatura futura.
 
-
 ### Temperatura vs Velocidad del Viento
 <p align="center">
   <img src="../reports/analisis_temporal/crosscorr/cross_corr_temperature_2m_wind_speed_10m.png" width="700">
 </p>
+
+lags = [1,2,6,12,24]
+
+La correlación cruzada entre la velocidad del viento desplazada k intervalos y la temperatura futura muestra también un comportamiento cíclico, con una correlación más alta en los instantes inmediatos previos a la temperatura que se busca predecir.
+
+Además, se seleccionan lags que permitan capturar tanto la dependencia inmediata como el patrón cíclico diario de la relación entre ambas variables.
+
+Lags seleccionados: **[1, 2, 6, 12, 24]**
 
 ---
 
@@ -116,3 +123,15 @@ Para más detalles sobre la selección de lags, ver [Selección de Lags](lag_sel
 ---
 
 [← Volver al README principal](../README.md)
+
+---
+
+## 📝 Conclusiones integrales del Análisis Temporal
+
+1. **Estacionalidad marcada:** Las variables meteorológicas, especialmente la temperatura y la humedad relativa, presentan un claro patrón diario, reflejando la influencia del ciclo día-noche en el clima.
+
+2. **Relaciones entre variables:** Existe una fuerte correlación inversa entre temperatura y humedad relativa, con máximos y mínimos opuestos a lo largo del día. La velocidad del viento muestra mayor variabilidad y menor predictibilidad, pero también sigue un patrón diario con picos en la tarde.
+
+3. **Importancia de los lags:** El análisis de autocorrelación y correlación cruzada permitió identificar lags significativos para cada variable. 
+
+4. **Implicaciones para el modelado:** El conocimiento de la estacionalidad y la memoria temporal de las variables es fundamental para construir modelos robustos y precisos, evitando la inclusión de lags irrelevantes y maximizando la información útil.
