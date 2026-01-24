@@ -1,6 +1,6 @@
 {
     "nombre_modelo": "Ridge",
-    "fecha_entrenamiento": "2026-01-12T17:04:00.900701",
+    "fecha_entrenamiento": "2026-01-24T16:10:53.416278",
     "version": "1.0.0",
     "target": "temperature_2m_target",
     "metricas": {

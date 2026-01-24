@@ -32,6 +32,67 @@ def leer_archivo_csv(ruta_archivo: str) -> pd.DataFrame:
         return pd.DataFrame()  
     return df
 
+def plot_ridge_bias_variance(x_train: pd.DataFrame, y_train: pd.Series, x_test: pd.DataFrame, y_test: pd.Series, ruta_salida: str = "reports/figures/curvas aprendizaje/ridge_bias_variance.png"):
+    """
+    Grafica lambda vs varianza, bias^2 y test squared error para Ridge.
+    """
+    alphas = np.logspace(-8, 8, 40)
+    n_repeats = 10
+    preds = np.zeros((n_repeats, len(alphas), len(y_test)))
+    for rep in range(n_repeats):
+        for i, a in enumerate(alphas):
+            ridge = Ridge(alpha=a, fit_intercept=True, max_iter=20000)
+            ridge.fit(x_train, y_train)
+            preds[rep, i, :] = ridge.predict(x_test)
+    # Calcular bias^2, varianza y error cuadrático medio
+    mean_preds = preds.mean(axis=0)
+    bias2 = np.mean((mean_preds - y_test.values) ** 2, axis=1)
+    variance = np.mean(np.var(preds, axis=0), axis=1)
+    test_error = np.mean((preds - y_test.values) ** 2, axis=(0,2))
+    # Graficar
+    Path(ruta_salida).parent.mkdir(parents=True, exist_ok=True)
+    plt.figure(figsize=(10, 6))
+    plt.plot(alphas, bias2, label="Bias$^2$")
+    plt.plot(alphas, variance, label="Varianza")
+    plt.plot(alphas, test_error, label="Test Squared Error")
+    plt.xscale("log")
+    plt.xlabel("Lambda (alpha)")
+    plt.ylabel("Error")
+    plt.title("Bias$^2$, Varianza y Test Squared Error vs Lambda (Ridge)")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(ruta_salida, dpi=150, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Curva bias^2, varianza y test squared error guardada en: {ruta_salida}")
+
+
+def plot_ridge_coefs_vs_lambda(x_train: pd.DataFrame, y_train: pd.Series, ruta_salida: str = "reports/figures/curvas aprendizaje/ridge_coefs_vs_lambda.png"):
+    """
+    Grafica la evolución de los coeficientes de Ridge en función de lambda (alpha).
+    """
+    alphas = np.logspace(-8, 8, 100)
+    coefs = []
+    for a in alphas:
+        ridge = Ridge(alpha=a, fit_intercept=True, max_iter=20000)
+        ridge.fit(x_train, y_train)
+        coefs.append(ridge.coef_)
+    coefs = np.array(coefs)
+    Path(ruta_salida).parent.mkdir(parents=True, exist_ok=True)
+    plt.figure(figsize=(10, 6))
+    for i in range(coefs.shape[1]):
+        plt.plot(alphas, coefs[:, i], label=f"Coef {i+1}")
+    plt.xscale("log")
+    plt.xlabel("Lambda (alpha)")
+    plt.ylabel("Coeficiente")
+    plt.title("Curva de coeficientes vs Lambda para Ridge")
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(ruta_salida, dpi=150, bbox_inches="tight")
+    plt.close()
+    logger.info(f"Curva de coeficientes vs lambda guardada en: {ruta_salida}")
+
+
 def dividir_train_test(df:pd.DataFrame, objective_col:str) -> tuple[pd.DataFrame,pd.DataFrame,pd.Series,pd.Series]:
     df["time"]= pd.to_datetime(df["time"], errors='coerce')
     df = df.dropna(subset=["time"])
@@ -105,6 +166,10 @@ def modelos_lineales(x_train: pd.DataFrame, x_test: pd.DataFrame, y_train: pd.Se
 
 
     dataframe_results = pd.DataFrame(results)
+    # Graficar curva de coeficientes vs lambda para Ridge
+    if "Ridge" in best_models:
+        plot_ridge_coefs_vs_lambda(x_train, y_train)
+        plot_ridge_bias_variance(x_train, y_train, x_test, y_test)
     return dataframe_results, best_models
 
 def columnas_estacionalidad(df: pd.DataFrame) -> pd.DataFrame:
@@ -782,7 +847,7 @@ def main(stage: str):
    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--stage", type=str, default="shap",
+    parser.add_argument("--stage", type=str, default="lineales",
                         choices=["separar_datos", "lineales", "xgboost", "shap"])
     args = parser.parse_args()
     main(args.stage)
