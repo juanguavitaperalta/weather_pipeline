@@ -4,6 +4,21 @@ Este documento detalla el proceso de entrenamiento y comparación de los modelos
 
 ---
 
+## Estructura del entrenamiento y selección de modelos
+
+### 1. Condiciones generales
+1. Se excluira el mes de junio para esta etapa pues se utilizará para la etapa de predicciones.
+2.  - Se agregan columnas: `dayofweek`, `month`, `hour`, `sin_comp`, `cos_comp` usando la función `columnas_estacionalidad()`. Con estas variables, se busca capturar el comportamiento estacionario propio de los datos contenidos en el data set.
+3. - 80% para entrenamiento, 20% para prueba, respetando el orden temporal, usando la función `dividir_train_test()`.
+
+## 2. Entrenamiento de modelos lineales:
+
+1. La funcion `modelos_lineales()` realiza una busqueda de hiperparametros con validación cruzada con un kfold=5. Se usa la función `TimeSeriesSplit`para realizar las particiones, respetando el  orden de los datos y `GridSearchCV` para la busqueda de hiperparametros.
+
+2. Como la busqueda de hiperparametros se realiza dado un problema de optimización, se seleccionaran los hiperparametros, evaluando las metricas RMSE y MAE. El mejor modelo se seleccionara de aquel con el menor RMSE.
+
+3. Al final se generara una curva de aprendizaje (validacion vs test) para evluaar si hay overfitting, (falta de generalización del modelo ante presencia de modelos nuevos) o falta de aprendizaje en la etapa de entrenamiento.
+
 ## 📊 Modelos Evaluados
 ## 🧩 Diagramas de Arquitectura de Modelos
 
