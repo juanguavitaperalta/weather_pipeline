@@ -93,7 +93,7 @@ El boxplot muestra claramente la asimetría positiva con la mediana desplazada h
 1. **Sin imputación necesaria:** Las tres variables están completas, sin valores nulos.
 2. **Sin tratamiento de outliers:** Los valores extremos son meteorológicamente válidos y aportan información.
 3. **Escalado recomendado:** Dado los diferentes rangos (°C, %, km/h), se recomienda estandarización para modelos lineales.
-4. **Feature engineering:** La variabilidad en humedad y viento sugiere que los lags de estas variables pueden aportar poder predictivo.
+4. **Feature engineering:** La variabilidad en humedad y viento sugiere que los lags de estas variables pueden aportar poder predictivo. Se utilizaran modelos lineales, modelo machine learning y deep learning.
 
 ---
 

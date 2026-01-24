@@ -11,8 +11,7 @@ Este documento presenta el análisis de interpretabilidad del modelo XGBoost uti
   <img src="../reports/figures/shap/shap_summary_bar.png" width="700">
 </p>
 
-**Interpretación:** Las barras muestran la importancia promedio de cada feature en las predicciones del modelo.
-
+**Interpretación:** Esta grafica ilustra un ranking de variables que utilizará el modelo para realizar su predicción. En este caso, se puede analizar que el modelo se ve fuertemente influenciado por la variable creada para capturar el componente de estacionalidad diaria, lo cual es bastante congruente con una variable que depende directamente de la irradiancia solar. Adicionalmente, la teperatura en el momento presente, la humedad en el momento presente y retrasada doce horas para realizar su función.
 ---
 
 ## 🐝 SHAP Beeswarm Plot
@@ -22,9 +21,19 @@ Este documento presenta el análisis de interpretabilidad del modelo XGBoost uti
 </p>
 
 **Interpretación:** 
-- Cada punto representa una observación
+Este grafico permite realizar una interpretación causal entre la variable objetivo y y cada una de las variables predictoras. En este caso el grafico permite visualizar el impacto de la variable, tanto en valores positivos y negativos de la predicción.
+
 - El color indica el valor de la feature (rojo = alto, azul = bajo)
 - La posición horizontal indica el impacto en la predicción
+
+1. En este grafico, se puede observar por que la variable cos_comp se encuentra en el top 1 del grafico Shap feature importance. Esta variable tiene un impacto en todo el rango de predicción de las variable onjnetivo. Esta variable recontruye el ciclo diario necesario para predecir la temperatura.
+
+2. Las variables, hour & sin_comp tienden a tener un impacto relevante en la predicción. La variable Hour da información explicita sobre el comportamiento ciclico de la variable, trabajando muy bien con la variable cos_comp and sin_comp. Por último, la variable sin_comp tiene mayor impacto en el modelo para realizar predicciónes de temperatura positivas. Esto indica que esta variable tiene un alto impacto para temperatuas diurnas.
+
+3. Se puede observar que temperatura y humedad en instantes actuales tambien impactan la predicción de la temperatura en el horizonte objetivo.(t=3 hrs). 
+
+4. El grafico discrimina el impacto de los retrasos importantes. Para la humedad, ilustra que la variable retrasada 12, 24 y 36 horas impactan en menor medida que las variables que capturar el comportamiento ciclico del día, siendo dimilar su impacto para la temperatrura retrasada en 3 horas.
+
 
 ---
 
