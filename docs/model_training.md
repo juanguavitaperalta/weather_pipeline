@@ -19,6 +19,14 @@ Este documento detalla el proceso de entrenamiento y comparación de los modelos
 
 3. Al final se generara una curva de aprendizaje (validacion vs test) para evluaar si hay overfitting, (falta de generalización del modelo ante presencia de modelos nuevos) o falta de aprendizaje en la etapa de entrenamiento.
 
+## 3. Entrenamiento modelo ML XGBoost
+
+1. Se usa la función `entrenar_xgboost()` para realizar la selección de los  hiperparámetros `max_depth`, `min_child_weight`, `subsample`, `colsample_bytree`, `gamma`, `reg_alpha`, `reg_lambda`, `learning_rate`.  Se selecciona el mejor modelo por RMSE de validación cruzada y se evalúa en test.
+
+2. Se extrae la curva de aprendizaje por boosting round y se determina el número óptimo de arboles.
+
+3. Se reentrena el modelo y se guarda.
+
 ## 📊 Modelos Evaluados
 ## 🧩 Diagramas de Arquitectura de Modelos
 
@@ -32,13 +40,14 @@ flowchart LR
 
 ### XGBoost
 ```mermaid
-flowchart LR
+flowchart TD
   X[Variables de entrada] --> F[Transformación y Escalado]
   F --> T1[Árbol 1]
   F --> T2[Árbol 2]
   F --> Tn[Árbol n]
   T1 & T2 & Tn --> S[Suma de árboles]
-  S --> Y[Predicción Temperatura]
+  S --> C[Curva de aprendizaje\nSelección óptima de n_estimators]
+  C --> Y[Predicción Temperatura]
 ```
 
 ### Modelos Lineales
