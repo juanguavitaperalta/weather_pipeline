@@ -2,6 +2,7 @@
 
 Este documento presenta el análisis de interpretabilidad del modelo XGBoost utilizando SHAP (SHapley Additive exPlanations).
 
+**Interpretación:** 
 Esta gráfico ilustra un ranking de variables que utilizará el modelo para realizar su predicción. En este caso, se puede analizar que el modelo se ve fuertemente influenciado por la variable creada para capturar el componente de estacionalidad diaria, lo cual es bastante congruente con una variable que depende directamente de la irradiancia solar. Adicionalmente, la temperatura en el momento presente, la humedad en el momento presente y retrasada doce horas para realizar su función.
 
 ---
@@ -12,10 +13,6 @@ Esta gráfico ilustra un ranking de variables que utilizará el modelo para real
 <p align="center">
   <img src="../reports/figures/shap/shap_summary_bar.png" width="700">
 </p>
-
-**Interpretación:** 
-
-
 
 ---
 
