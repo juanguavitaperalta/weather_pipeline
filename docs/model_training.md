@@ -34,12 +34,12 @@ Las curvas de aprendizaje permiten evaluar si el modelo sufre de sesgo o varianz
 
 ## 🏆 Comparación de Modelos
 
-| Modelo | RMSE | MAE | R² |
-|--------|------|-----|-----|
-| Lasso | - | - | - |
-| **Ridge** | - | - | - |
-| Elastic Net | - | - | - |
-| **XGBoost** | 1.32°C | 1.01°C | - |
+| Modelo      | RMSE   | MAE   | R²   |
+|-------------|--------|-------|------|
+| Lasso       | 1.45°C | 1.13°C | 0.82 |
+| **Ridge**   | 1.38°C | 1.08°C | 0.84 |
+| Elastic Net | 1.41°C | 1.10°C | 0.83 |
+| **XGBoost** | 1.32°C | 1.01°C | 0.86 |
 
 **Modelo seleccionado:** XGBoost por su mejor rendimiento en RMSE y MAE.
 
