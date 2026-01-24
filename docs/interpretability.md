@@ -51,15 +51,40 @@ El grafico SHAP Summary Dot Plot ilustra los concluido anteriormente de mayor a 
 
 Las gráficas de dependencia muestran cómo el valor de una feature afecta la predicción.
 
+### Componente Coseno (Estacionalidad)
+<p align="center">
+  <img src="../reports/figures/shap/shap_dependence_cos_comp.png" width="600">
+</p>
+
+Este grafico describe el comportamiento solar, donde -1 corresponde a la maxima irradiancia y +1 a la minima irradiacia. 
+
+- cos_comp = -1 entre las 12 - 14 horas del día, esta varible tiene un alto impacto en la predicción.
+- cos_comp = 1 en la noche y madrugada, aportando poco a la predicción.
+- cos_comp = 0 en las transiciones de dia/noche, la variable no es importante en la para el modelo en la predicción.
+
 ### Temperatura Actual
 <p align="center">
   <img src="../reports/figures/shap/shap_dependence_temperature_2m.png" width="600">
 </p>
 
+Este gráfico ilustra que el modelo logra diferenciar el momento del día independientemente de la similitud en la magnitud de la temperatura.En este caso, la barra de color es la varible cos_comp, que describe el comportamiento ciclico diario del día.
+
 ### Hora del Día
 <p align="center">
   <img src="../reports/figures/shap/shap_dependence_hour.png" width="600">
 </p>
+
+En este caso, el grafico ilustra como el modelo utiliza la información explicita respecto a las horas para la predicción.
+
+| Rango horario | SHAP(hour)  | Interpretación                 |
+| ------------- | ----------- | ------------------------------ |
+| 0–5           | ≈ 0         | ajuste mínimo |
+| 6–11          | +1 a +1.8   | impulso positivo      |
+| 12–14         | +0.5 a +1.2 | corrección leve     |
+| 15            | ≈ 0         | Transición                     |
+| 16–18         | −2 a −2.5   | corrección negativa    |
+| 19–23         | −1.2 a −0.8 | caída gradual          |
+
 
 ### Humedad Relativa (Lag 12h)
 <p align="center">
@@ -69,11 +94,6 @@ Las gráficas de dependencia muestran cómo el valor de una feature afecta la pr
 ### Componente Seno (Estacionalidad)
 <p align="center">
   <img src="../reports/figures/shap/shap_dependence_sin_comp.png" width="600">
-</p>
-
-### Componente Coseno (Estacionalidad)
-<p align="center">
-  <img src="../reports/figures/shap/shap_dependence_cos_comp.png" width="600">
 </p>
 
 ### Día de la Semana
