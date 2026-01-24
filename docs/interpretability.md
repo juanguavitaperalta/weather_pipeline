@@ -2,6 +2,8 @@
 
 Este documento presenta el análisis de interpretabilidad del modelo XGBoost utilizando SHAP (SHapley Additive exPlanations).
 
+Esta gráfico ilustra un ranking de variables que utilizará el modelo para realizar su predicción. En este caso, se puede analizar que el modelo se ve fuertemente influenciado por la variable creada para capturar el componente de estacionalidad diaria, lo cual es bastante congruente con una variable que depende directamente de la irradiancia solar. Adicionalmente, la temperatura en el momento presente, la humedad en el momento presente y retrasada doce horas para realizar su función.
+
 ---
 
 ## 📊 Importancia de Features
@@ -11,7 +13,10 @@ Este documento presenta el análisis de interpretabilidad del modelo XGBoost uti
   <img src="../reports/figures/shap/shap_summary_bar.png" width="700">
 </p>
 
-**Interpretación:** Esta grafica ilustra un ranking de variables que utilizará el modelo para realizar su predicción. En este caso, se puede analizar que el modelo se ve fuertemente influenciado por la variable creada para capturar el componente de estacionalidad diaria, lo cual es bastante congruente con una variable que depende directamente de la irradiancia solar. Adicionalmente, la temperatura en el momento presente, la humedad en el momento presente y retrasada doce horas para realizar su función.
+**Interpretación:** 
+
+
+
 ---
 
 ## 🐝 SHAP Beeswarm Plot
@@ -20,7 +25,8 @@ Este documento presenta el análisis de interpretabilidad del modelo XGBoost uti
   <img src="../reports/figures/shap/shap_beeswarm.png" width="700">
 </p>
 
-**Interpretación:** Este grafico permite realizar una interpretación causal entre la variable objetivo y y cada una de las variables predictoras. En este caso el grafico permite visualizar el impacto de la variable, tanto en valores positivos y negativos de la predicción.
+**Interpretación:** 
+Este grafico permite realizar una interpretación causal entre la variable objetivo y y cada una de las variables predictoras. En este caso el grafico permite visualizar el impacto de la variable, tanto en valores positivos y negativos de la predicción.
 
 - El color indica el valor de la feature (rojo = alto, azul = bajo)
 - La posición horizontal indica el impacto en la predicción
