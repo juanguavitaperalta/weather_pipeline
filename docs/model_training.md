@@ -12,6 +12,15 @@ Este documento detalla el proceso de entrenamiento y comparación de los modelos
 3. - 80% para entrenamiento, 20% para prueba, respetando el orden temporal, usando la función `dividir_train_test()`.
 
 ## 2. Entrenamiento de modelos lineales:
+## 🧩 Diagramas de Arquitectura de Modelos
+
+### Modelos Lineales (Lasso, Ridge, Elastic Net) diagrama
+```mermaid
+flowchart LR
+  X[Variables de entrada] --> F[Transformación y Escalado]
+  F --> L[Modelo Lineal]
+  L --> Y[Evaluacion de metricas]
+```
 
 1. La funcion `modelos_lineales()` realiza una busqueda de hiperparametros con validación cruzada con un kfold=5. Se usa la función `TimeSeriesSplit`para realizar las particiones, respetando el  orden de los datos y `GridSearchCV` para la busqueda de hiperparametros.
 
@@ -21,24 +30,9 @@ Este documento detalla el proceso de entrenamiento y comparación de los modelos
 
 ## 3. Entrenamiento modelo ML XGBoost
 
-1. Se usa la función `entrenar_xgboost()` para realizar la selección de los  hiperparámetros `max_depth`, `min_child_weight`, `subsample`, `colsample_bytree`, `gamma`, `reg_alpha`, `reg_lambda`, `learning_rate`.  Se selecciona el mejor modelo por RMSE de validación cruzada y se evalúa en test.
 
-2. Se extrae la curva de aprendizaje por boosting round y se determina el número óptimo de arboles.
 
-3. Se reentrena el modelo y se guarda.
-
-## 📊 Modelos Evaluados
-## 🧩 Diagramas de Arquitectura de Modelos
-
-### Modelos Lineales (Lasso, Ridge, Elastic Net)
-```mermaid
-flowchart LR
-  X[Variables de entrada] --> F[Transformación y Escalado]
-  F --> L[Modelo Lineal]
-  L --> Y[Predicción Temperatura]
-```
-
-### XGBoost
+### XGBoost diagrama
 ```mermaid
 flowchart TD
   X[Variables de entrada] --> F[Transformación y Escalado]
@@ -47,8 +41,16 @@ flowchart TD
   F --> Tn[Árbol n]
   T1 & T2 & Tn --> S[Suma de árboles]
   S --> C[Curva de aprendizaje\nSelección óptima de n_estimators]
-  C --> Y[Predicción Temperatura]
+  C --> Y[Evaluación de metricas]
 ```
+
+1. Se usa la función `entrenar_xgboost()` para realizar la selección de los  hiperparámetros `max_depth`, `min_child_weight`, `subsample`, `colsample_bytree`, `gamma`, `reg_alpha`, `reg_lambda`, `learning_rate`.  Se selecciona el mejor modelo por RMSE de validación cruzada y se evalúa en test.
+
+2. Se extrae la curva de aprendizaje por boosting round y se determina el número óptimo de arboles.
+
+3. Se reentrena el modelo y se guarda.
+
+## 📊 Modelos Evaluados
 
 ### Modelos Lineales
 - **Lasso:** Regularización L1 para selección de variables
