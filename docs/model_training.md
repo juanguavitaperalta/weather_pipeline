@@ -75,15 +75,36 @@ Para los modelos lineales se realizo una comparación entre los tres modelos bas
 </p>
 
 El modelo de regersión ridge, en este caso. Esta determinado por la siguiente expresión:
+
 $$
-	ext{RSS} = \sum_{i=1}^n \left( y_i^2 - 2y_i (\beta_0 + \beta_1 x_i) + (\beta_0 + \beta_1 x_i)^2 \right)
+  ext{RSS} = \sum_{i=1}^n \left( y_i^2 - 2y_i (\beta_0 + \beta_1 x_i) + (\beta_0 + \beta_1 x_i)^2 \right)
 $$
 
 $$
 	ext{Ridge:} \quad \text{RSS} + \lambda \sum_j \beta_j^2
 $$
 
-donde \lambda es un parametro de ajuste. Este modelo busca estimar los coeficientes de las variables predictoras, logrando un RSS pequeño. Sin emabargo, la expresión que acompaña a lambda es un termino de penalización cuya función es reducir la magnitud de los coeficientes  $$\beta_j$$.
+donde \lambda es un parametro de ajuste. Este modelo busca estimar los coeficientes de las variables predictoras, logrando un RSS pequeño. Sin emabargo, la expresión que acompaña a lambda es un termino de penalización cuya función es reducir la magnitud de los coeficientes  $$\beta_j$$. La curva de coeficientes vs el coeficiente lambda de regularización ilustra esta penalización, donde se puede observar que la magnitud de los coeficentes desciende mientras el lambda aumenta.
+
+### Ridge - Curva de Coeficientes vs Lambda
+
+<p align="center">
+  <img src="../reports/figures/curvas%20aprendizaje/ridge_coefs_vs_lambda.png" width="700">
+</p>
+
+### Ridge - Bias$^2$, Varianza y Test Squared Error vs Lambda
+
+La siguiente gráfica muestra cómo varían el bias$^2$, la varianza y el error cuadrático de test en función de $\lambda$ (alpha) para Ridge:
+
+<p align="center">
+  <img src="../reports/figures/curvas%20aprendizaje/ridge_bias_variance.png" width="700">
+</p>
+
+
+<p align="center">
+  <img src="../reports/figures/curvas%20aprendizaje/ridge_mse_vs_lambda.png" width="700">
+</p>
+
 
 ### XGBoost - Optimización de n_estimators
 <p align="center">
