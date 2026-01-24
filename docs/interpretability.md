@@ -60,7 +60,7 @@ Este grafico describe el comportamiento solar, donde -1 corresponde a la maxima 
 
 - cos_comp = -1 entre las 12 - 14 horas del día, esta varible tiene un alto impacto en la predicción.
 - cos_comp = 1 en la noche y madrugada, aportando poco a la predicción.
-- cos_comp = 0 en las transiciones de dia/noche, la variable no es importante en la para el modelo en la predicción.
+- cos_comp = 0 en las transiciones de dia/noche, la variable no es importante para el modelo en la predicción.
 
 ### Temperatura Actual
 <p align="center">
@@ -86,20 +86,12 @@ En este caso, el grafico ilustra como el modelo utiliza la información explicit
 | 19–23         | −1.2 a −0.8 | caída gradual          |
 
 
-### Humedad Relativa (Lag 12h)
-<p align="center">
-  <img src="../reports/figures/shap/shap_dependence_relative_humidity_2m_lag_12.png" width="600">
-</p>
-
 ### Componente Seno (Estacionalidad)
 <p align="center">
   <img src="../reports/figures/shap/shap_dependence_sin_comp.png" width="600">
 </p>
 
-### Día de la Semana
-<p align="center">
-  <img src="../reports/figures/shap/shap_dependence_dayofweek.png" width="600">
-</p>
+
 
 ---
 
