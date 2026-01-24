@@ -11,7 +11,7 @@ Este documento presenta el análisis de interpretabilidad del modelo XGBoost uti
   <img src="../reports/figures/shap/shap_summary_bar.png" width="700">
 </p>
 
-**Interpretación:** Esta grafica ilustra un ranking de variables que utilizará el modelo para realizar su predicción. En este caso, se puede analizar que el modelo se ve fuertemente influenciado por la variable creada para capturar el componente de estacionalidad diaria, lo cual es bastante congruente con una variable que depende directamente de la irradiancia solar. Adicionalmente, la teperatura en el momento presente, la humedad en el momento presente y retrasada doce horas para realizar su función.
+**Interpretación:** Esta grafica ilustra un ranking de variables que utilizará el modelo para realizar su predicción. En este caso, se puede analizar que el modelo se ve fuertemente influenciado por la variable creada para capturar el componente de estacionalidad diaria, lo cual es bastante congruente con una variable que depende directamente de la irradiancia solar. Adicionalmente, la temperatura en el momento presente, la humedad en el momento presente y retrasada doce horas para realizar su función.
 ---
 
 ## 🐝 SHAP Beeswarm Plot
@@ -34,7 +34,7 @@ Este grafico permite realizar una interpretación causal entre la variable objet
 
 4. El grafico discrimina el impacto de los retrasos importantes. Para la humedad, ilustra que la variable retrasada 12, 24 y 36 horas impactan en menor medida que las variables que capturar el comportamiento ciclico del día, siendo dimilar su impacto para la temperatrura retrasada en 3 horas.
 
-
+El grafico SHAP Summary Dot Plot ilustra los concluido anteriormente de mayor a menor impacto como consulta adicional. 
 ---
 
 ## 📈 SHAP Summary Dot Plot
