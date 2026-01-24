@@ -86,6 +86,7 @@ En este caso, el grafico ilustra como el modelo utiliza la información explicit
 | 19–23         | −1.2 a −0.8 | caída gradual          |
 
 
+
 ### Componente Seno (Estacionalidad)
 <p align="center">
   <img src="../reports/figures/shap/shap_dependence_sin_comp.png" width="600">
