@@ -5,6 +5,26 @@ Este documento detalla el proceso de entrenamiento y comparación de los modelos
 ---
 
 ## 📊 Modelos Evaluados
+## 🧩 Diagramas de Arquitectura de Modelos
+
+### Modelos Lineales (Lasso, Ridge, Elastic Net)
+```mermaid
+flowchart LR
+  X[Variables de entrada] --> F[Transformación y Escalado]
+  F --> L[Modelo Lineal]
+  L --> Y[Predicción Temperatura]
+```
+
+### XGBoost
+```mermaid
+flowchart LR
+  X[Variables de entrada] --> F[Transformación y Escalado]
+  F --> T1[Árbol 1]
+  F --> T2[Árbol 2]
+  F --> Tn[Árbol n]
+  T1 & T2 & Tn --> S[Suma de árboles]
+  S --> Y[Predicción Temperatura]
+```
 
 ### Modelos Lineales
 - **Lasso:** Regularización L1 para selección de variables
