@@ -67,9 +67,23 @@ flowchart TD
 Las curvas de aprendizaje permiten evaluar si el modelo sufre de sesgo o varianza.
 
 ### Ridge - Curva de Aprendizaje
+
+Para los modelos lineales se realizo una comparación entre los tres modelos basicos lineales, donde el modelo Ridge tuvo un mejor desempeño. A continuación se ilustra la curva de aprendizaje del modelo lineal.
+
 <p align="center">
   <img src="../reports/figures/curvas%20aprendizaje/curva_aprendizaje_ridge.png" width="700">
 </p>
+
+El modelo de regersión ridge, en este caso. Esta determinado por la siguiente expresión:
+$$
+	ext{RSS} = \sum_{i=1}^n \left( y_i^2 - 2y_i (\beta_0 + \beta_1 x_i) + (\beta_0 + \beta_1 x_i)^2 \right)
+$$
+
+$$
+	ext{Ridge:} \quad \text{RSS} + \lambda \sum_j \beta_j^2
+$$
+
+donde \lambda es un parametro de ajuste. Este modelo busca estimar los coeficientes de las variables predictoras, logrando un RSS pequeño. Sin emabargo, la expresión que acompaña a lambda es un termino de penalización cuya función es reducir la magnitud de los coeficientes  $$\beta_j$$.
 
 ### XGBoost - Optimización de n_estimators
 <p align="center">
