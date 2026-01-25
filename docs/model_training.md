@@ -86,27 +86,28 @@ $$
 
 donde $$\lambda$$ es un parametro de ajuste. Este modelo busca estimar los coeficientes de las variables predictoras, logrando un RSS pequeño. Sin emabargo, la expresión que acompaña a lambda es un termino de penalización cuya función es reducir la magnitud de los coeficientes  $$\beta_j$$. La curva de coeficientes vs el coeficiente lambda de regularización ilustra esta penalización, donde se puede observar que la magnitud de los coeficentes desciende mientras el lambda aumenta.
 
-### Ridge - Curva de Coeficientes vs Lambda
+
 
 <p align="center">
   <img src="../reports/figures/curvas%20aprendizaje/ridge_coefs_vs_lambda.png" width="700">
 </p>
 
-### Ridge - Bias$^2$, Varianza y Test Squared Error vs Lambda
+En la siguiente grafica, se ilustra la variación del mean square error en funcón del parámetro lambda de penalización. En nuestro caso el, el eje x se encuentra en escala logaritmica y el valor optimo esta aprximadamente en $$\lambda$$ = 10^2
 
-La siguiente gráfica muestra cómo varían el bias$^2$, la varianza y el error cuadrático de test en función de $\lambda$ (alpha) para Ridge:
+Para valores de $$\lambda$$ mayores, los valores de los coeficientes se reducen demasiado, el modelo no captura ningun patron lineal y el MSE aumenta.
 
-<p align="center">
-  <img src="../reports/figures/curvas%20aprendizaje/ridge_bias_variance.png" width="700">
-</p>
-
+## Limitaciones del modelo:
+En la curva de aprendizaje, El error existente en la curva de entrenamiento y test, tienden a converger a un valor constante. Sin embargo, ambos valores de convergencia difieren, debido a que el modelo no logra capturar los comportamientos no lineales intrinsecos en variables que dependen del clima.
 
 <p align="center">
   <img src="../reports/figures/curvas%20aprendizaje/ridge_mse_vs_lambda.png" width="700">
 </p>
 
 
-### XGBoost - Optimización de n_estimators
+### XGBoost - Modelo tipo machine learning
+
+En este caso, las curvas de entrenamiento y validación convergen al valor de de error RMSE de test. El valor RMSE de test se alinea con error de validación, indicando que el modelo logra generalizar de manera adecuada. Esto indica que el modelo aprendio interacciones no lineales del conjunto de entrenamiento y las usa de manera adecuada para realizar la predicción con datos nuevos. Como se analisa en la sección de interpretability.md, este modelo utilizara variables que capturan el comportamiento ciclico diario para y algunos lags de temperatura y humedad como varables de pmayor impacto a la hora de realizar la predicción.
+
 <p align="center">
   <img src="../reports/figures/xgb_n_estimators_curve.png" width="700">
 </p>
