@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from sklearn.pipeline import Pipeline
 import numpy as np
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit, GridSearchCV, learning_curve
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
@@ -13,12 +13,18 @@ import joblib
 import json
 import argparse
 from datetime import datetime
-import shap
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+from typing import Dict, Tuple
 
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def root_mean_squared_error(y_true, y_pred):
+    """Calcula RMSE para compatibilidad con versiones antiguas de sklearn"""
+    return np.sqrt(mean_squared_error(y_true, y_pred))
 
 def leer_archivo_csv(ruta_archivo: str) -> pd.DataFrame:
     try: 
@@ -108,6 +114,30 @@ def dividir_train_test(df:pd.DataFrame, objective_col:str) -> tuple[pd.DataFrame
     y_test = y.iloc[len_train:] 
 
     return x_train, x_test, y_train, y_test
+
+def dividir_train_test_lstm(df:pd.DataFrame, objective_col:str) -> tuple[pd.DataFrame,pd.DataFrame,pd.Series,pd.Series]:
+    df["time"] = pd.to_datetime(df["time"], errors="coerce")
+    df = df.dropna(subset=["time"])
+    df = df.sort_values(by="time").reset_index(drop=True)
+
+    y = df[objective_col]
+    x = df.drop(columns=[objective_col, "time"])
+
+    n = len(df)
+    test_size = 0.20
+    val_frac_within_train = 0.15
+    trainval_cut = int(np.floor((1 - test_size) * n))
+    val_cut = int(np.floor((1 - val_frac_within_train) * trainval_cut))
+
+    x_train = x.iloc[:val_cut]
+    y_train = y.iloc[:val_cut]
+    x_val = x.iloc[val_cut:trainval_cut]
+    y_val = y.iloc[val_cut:trainval_cut]
+    x_test = x.iloc[trainval_cut:]
+    y_test = y.iloc[trainval_cut:]
+
+    return x_train, y_train, x_val, y_val, x_test, y_test
+   
    
 
 def modelos_lineales(x_train: pd.DataFrame, x_test: pd.DataFrame, y_train: pd.Series, y_test: pd.Series) -> pd.DataFrame:
@@ -497,6 +527,79 @@ def xgb_feature_importance_df(booster, feature_names):
     return df_imp.sort_values("gain", ascending=False)
 
 
+def plot_lstm_learning_curves(history, output_path: str = "reports/figures/curvas aprendizaje/lstm_learning_curves.png"):
+    """
+    Grafica las curvas de aprendizaje del modelo LSTM.
+    
+    Args:
+        history: Historia del entrenamiento devuelta por model.fit()
+        output_path: Ruta donde guardar la gráfica
+    """
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    
+    # Configurar subplots
+    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+    fig.suptitle('Curvas de Aprendizaje LSTM', fontsize=16, fontweight='bold')
+    
+    # Loss
+    axes[0, 0].plot(history.history['loss'], label='Train Loss', color='blue', linewidth=2)
+    axes[0, 0].plot(history.history['val_loss'], label='Val Loss', color='red', linewidth=2)
+    axes[0, 0].set_title('Loss vs Epochs', fontweight='bold')
+    axes[0, 0].set_xlabel('Epoch')
+    axes[0, 0].set_ylabel('Loss (MSE)')
+    axes[0, 0].legend()
+    axes[0, 0].grid(True, alpha=0.3)
+    
+    # RMSE
+    axes[0, 1].plot(history.history['rmse'], label='Train RMSE', color='blue', linewidth=2)
+    axes[0, 1].plot(history.history['val_rmse'], label='Val RMSE', color='red', linewidth=2)
+    axes[0, 1].set_title('RMSE vs Epochs', fontweight='bold')
+    axes[0, 1].set_xlabel('Epoch')
+    axes[0, 1].set_ylabel('RMSE')
+    axes[0, 1].legend()
+    axes[0, 1].grid(True, alpha=0.3)
+    
+    # MAE
+    axes[1, 0].plot(history.history['mae'], label='Train MAE', color='blue', linewidth=2)
+    axes[1, 0].plot(history.history['val_mae'], label='Val MAE', color='red', linewidth=2)
+    axes[1, 0].set_title('MAE vs Epochs', fontweight='bold')
+    axes[1, 0].set_xlabel('Epoch')
+    axes[1, 0].set_ylabel('MAE')
+    axes[1, 0].legend()
+    axes[1, 0].grid(True, alpha=0.3)
+    
+    # Convergence Analysis
+    axes[1, 1].plot(history.history['val_loss'], label='Val Loss', color='red', linewidth=2)
+    axes[1, 1].axvline(x=len(history.history['val_loss'])-1, color='green', linestyle='--', 
+                       label=f'Early Stop (Epoch {len(history.history["val_loss"])})')
+    axes[1, 1].set_title('Convergencia (Validation Loss)', fontweight='bold')
+    axes[1, 1].set_xlabel('Epoch')
+    axes[1, 1].set_ylabel('Validation Loss')
+    axes[1, 1].legend()
+    axes[1, 1].grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    logger.info(f"Curvas de aprendizaje LSTM guardadas en: {output_path}")
+    
+    # También crear un resumen de métricas
+    final_metrics = {
+        'final_train_loss': history.history['loss'][-1],
+        'final_val_loss': history.history['val_loss'][-1],
+        'final_train_rmse': history.history['rmse'][-1],
+        'final_val_rmse': history.history['val_rmse'][-1],
+        'final_train_mae': history.history['mae'][-1],
+        'final_val_mae': history.history['val_mae'][-1],
+        'epochs_trained': len(history.history['loss']),
+        'best_val_loss': min(history.history['val_loss']),
+        'best_epoch': history.history['val_loss'].index(min(history.history['val_loss'])) + 1
+    }
+    
+    return final_metrics
+
+
 def analisis_shap(modelo, x_train: pd.DataFrame, x_test: pd.DataFrame, 
                   output_dir: str = "reports/figures/shap") -> dict:
     """
@@ -511,6 +614,12 @@ def analisis_shap(modelo, x_train: pd.DataFrame, x_test: pd.DataFrame,
     Returns:
         Diccionario con SHAP values y métricas de importancia
     """
+    try:
+        import shap
+    except ImportError as e:
+        logger.error(f"Error al importar SHAP: {e}")
+        return {}
+    
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     
     # =========================================================================
@@ -702,11 +811,183 @@ def separar_datos_prediccion(df: pd.DataFrame, mes_prediccion: int = 6, ruta_sal
     
     return df_train
 
+def separar_datos_prediccion_lstm(df: pd.DataFrame, mes_prediccion: int = 6, ruta_salida: str = "data/predict_data/predict.xlsx") -> pd.DataFrame:
+    """
+    Separa los datos del mes de predicción y los guarda en un archivo Excel.
+    Retorna el DataFrame sin el mes de predicción para entrenamiento.
+    """
+    df_copia = df.copy()
+    df_copia["time"] = pd.to_datetime(df_copia["time"], errors="coerce")
+
+    # Separar datos de junio (mes 6) para predicción
+    df_predict = df_copia[df_copia["time"].dt.month == mes_prediccion].copy()
+    df_train = df_copia[df_copia["time"].dt.month != mes_prediccion].copy()
+
+    # Incluir las 48 horas anteriores al primer día de junio en los datos de predicción
+    if not df_predict.empty:
+        primer_junio = df_predict["time"].min()
+        if pd.notnull(primer_junio):
+            limite = primer_junio - pd.Timedelta(hours=48)
+            mask_48h = (df_train["time"] >= limite) & (df_train["time"] < primer_junio)
+            df_48h = df_train[mask_48h].copy()
+            # Añadir las 48h a los datos de predicción
+            df_predict = pd.concat([df_48h, df_predict], ignore_index=True).sort_values("time").reset_index(drop=True)
+            # Eliminar esas 48h del train
+            df_train = df_train[~mask_48h]
+
+    # Guardar datos de predicción en Excel
+    ruta_salida = Path(ruta_salida)
+    ruta_salida.parent.mkdir(parents=True, exist_ok=True)
+    df_predict.to_excel(ruta_salida, index=False, engine='openpyxl')
+    logger.info(f"Datos de predicción (mes {mes_prediccion} + 48h previas) guardados en {ruta_salida}")
+    logger.info(f"Registros para predicción: {len(df_predict)}, Registros para entrenamiento: {len(df_train)}")
+
+    return df_train
+
+def lstm_window(df, columnas:list[str], target_col:str, window_size:int=48, horizon:int=3, time_col:str="time", dropna:bool=True)->tuple[np.ndarray, np.ndarray]:
+    df_lstm = df.copy()
+    if time_col in df_lstm.columns:
+        df_lstm[time_col] = pd.to_datetime(df_lstm[time_col], errors="coerce")
+        df_lstm = df_lstm.dropna(subset=[time_col]).sort_values(time_col).reset_index(drop=True)
+
+    revision = columnas+[target_col]
+    perdidas = [i for i in revision if i not in df_lstm.columns]
+    if perdidas:
+        raise ValueError(f"Las siguientes columnas no están en el DataFrame: {perdidas}")
+    if dropna:
+        df_lstm = df_lstm.dropna(subset=revision).reset_index(drop=True)
+
+    x_values = df_lstm[columnas].to_numpy(dtype=np.float32)
+    y_values = df_lstm[target_col].to_numpy(dtype=np.float32)
+    t_values = df_lstm[time_col].to_numpy() if time_col in df_lstm.columns else np.arange(len(df_lstm))    
+
+    n = len(df_lstm)
+    ultimo_t = n-horizon-1
+
+    x_list, y_list, t_list = [], [], []
+
+    for i in range(window_size-1, ultimo_t+1):
+        inicio = i - window_size + 1
+        fin = i + 1  
+        x_list.append(x_values[inicio:fin,:])
+        y_list.append(y_values[i + horizon])
+        t_list.append(t_values[i])
+
+    x=np.stack(x_list) if x_list else np.empty((0, window_size, len(columnas)), dtype=np.float32)
+    y=np.array(y_list, dtype=np.float32)
+    t_index = np.array(t_list)
+
+    return x,y,t_index
+
+def scale_lstm(x_train: np.ndarray, x_val: np.ndarray, x_test: np.ndarray, scaler = StandardScaler()) -> tuple[np.ndarray, np.ndarray, np.ndarray, StandardScaler]:
+    n_samples, window_size, n_features = x_train.shape
+    x_train_reshaped = x_train.reshape(-1, n_features)
+    x_val_reshaped = x_val.reshape(-1, n_features)
+    x_test_reshaped = x_test.reshape(-1, n_features)
+
+    scaler.fit(x_train_reshaped)
+    x_train_scaled = scaler.transform(x_train_reshaped).reshape(n_samples, window_size, n_features)
+    x_val_scaled = scaler.transform(x_val_reshaped).reshape(x_val.shape[0], window_size, n_features)
+    x_test_scaled = scaler.transform(x_test_reshaped).reshape(x_test.shape[0], window_size, n_features)
+
+    return x_train_scaled, x_val_scaled, x_test_scaled, scaler
+
+def train_lstm(x_train: np.ndarray, y_train: np.ndarray, x_val: np.ndarray, y_val: np.ndarray,*, units: int = 64, dropout: float = 0.2, lr: float = 1e-3,
+               batch_size: int = 32, epochs: int = 500, patience: int = 40, 
+               verbose: int=1, output_path: str = "models/lstm_final.h5"):
+    """Entrena un modelo LSTM con early stopping"""
+    try:
+        import tensorflow as tf
+        from tensorflow.keras import layers, models, callbacks, optimizers
+    except ImportError as e:
+        logger.error(f"Error al importar TensorFlow: {e}")
+        logger.error("Para usar LSTM instala TensorFlow: pip install tensorflow")
+        return None, None
+    
+    tf.keras.backend.clear_session()
+    lookback = x_train.shape[1]
+    n_features = x_train.shape[2]
+
+    modelo = models.Sequential(
+        [
+            layers.Input(shape=(lookback, n_features)),
+            layers.LSTM(units, return_sequences=False),
+            layers.Dropout(dropout),
+            layers.Dense(32, activation="relu"),
+            layers.Dense(1)
+        ]
+    )
+
+    modelo.compile(
+        optimizer=optimizers.Adam(learning_rate=lr),
+        loss="mse",
+        metrics=[tf.keras.metrics.RootMeanSquaredError(name="rmse"),
+                 tf.keras.metrics.MeanAbsoluteError(name="mae")],
+    )
+
+    call_back:list = [callbacks.EarlyStopping(monitor="val_loss", patience=patience, restore_best_weights=True)] 
+
+    if output_path:
+        call_back.append(callbacks.ModelCheckpoint(output_path, monitor="val_loss", save_best_only=True, save_weights_only=False))
+
+
+    history = modelo.fit(
+        x_train,
+        y_train,
+        validation_data=(x_val, y_val),
+        epochs=epochs,
+        batch_size=batch_size,
+        shuffle=False,  # IMPORTANTÍSIMO en series de tiempo
+        callbacks=call_back,
+        verbose=verbose,
+    )
+
+    # Si guardaste el mejor, lo recargas para garantizar que devuelves el óptimo
+    if output_path:
+        try:
+            modelo = tf.keras.models.load_model(output_path)
+        except Exception:
+            # si algo falla, al menos devuelves el que tiene restore_best_weights=True
+            pass
+
+    return modelo, history
+
+
+def evaluate(model, x_test: np.ndarray, y_test: np.ndarray, *, prefix: str = "test") -> Dict[str, float]:
+    """
+    Evalúa el modelo en test y retorna métricas.
+    """
+    try:
+        import tensorflow as tf
+    except ImportError as e:
+        logger.error(f"Error al importar TensorFlow: {e}")
+        return {}
+    
+    # Predicción
+    y_pred = model.predict(x_test, verbose=0).reshape(-1)
+
+    # Métricas numpy (compatibles con tu pipeline)
+    rmse = float(np.sqrt(np.mean((y_test - y_pred) ** 2)))
+    mae = float(np.mean(np.abs(y_test - y_pred)))
+
+    # MAPE (cuidado con ceros)
+    eps = 1e-8
+    mape = float(np.mean(np.abs((y_test - y_pred) / (np.abs(y_test) + eps))) * 100.0)
+
+    out = {
+        f"{prefix}_rmse": rmse,
+        f"{prefix}_mae": mae,
+        f"{prefix}_mape": mape,
+    }
+
+    print(out)
+    return out
 
 def main(stage: str):
    
    logger.warning("lectura de archivo.")
    ruta_entrada  = "data/features/features.csv"
+   ruta_datos_lstm = "data/features/clean.csv"
    df = leer_archivo_csv(ruta_entrada)
 
    df["time"] = pd.to_datetime(df["time"], errors="coerce")
@@ -715,20 +996,21 @@ def main(stage: str):
    # Stage para solo separar datos sin entrenar
    if stage == "separar_datos":
        logger.info("Separando datos de junio para predicción...")
-       separar_datos_prediccion(df, mes_prediccion=6, ruta_salida="data/predict_data/predict.xlsx")
+       df_train = separar_datos_prediccion(df, mes_prediccion=6, ruta_salida="data/predict_data/predict.xlsx")
+       df_train_lstm = separar_datos_prediccion_lstm(df, mes_prediccion=6, ruta_salida=ruta_datos_lstm)
        logger.info("Separación completada. No se realizará entrenamiento.")
-       return
+        
+       logger.info("Generando columnas de estacionalidad.")
+       df_train = columnas_estacionalidad(df_train)
+       df_train_lstm = columnas_estacionalidad(df_train_lstm)
    
-   # Excluir junio del entrenamiento (data leakage prevention)
-   logger.info("Excluyendo datos de junio del entrenamiento...")
-   df = df[df["time"].dt.month != 6].copy()
-   logger.info(f"Registros para entrenamiento (sin junio): {len(df)}")
-    
-   logger.info("Generando columnas de estacionalidad.")
-   df = columnas_estacionalidad(df)
+       logger.info("Dividiendo los datos en conjuntos de entrenamiento y prueba.")
+       x_train, x_test, y_train, y_test = dividir_train_test(df_train, objective_col="temperature_2m_target")
+       x_train2, y_train2, x_val2, y_val2, x_test2, y_test2 = dividir_train_test_lstm(df_train_lstm, objective_col="temperature_2m_target")
+            
+       return x_train, x_test, y_train, y_test, x_train2, y_train2, x_val2, y_val2, x_test2, y_test2
    
-   logger.info("Dividiendo los datos en conjuntos de entrenamiento y prueba.")
-   x_train, x_test, y_train, y_test = dividir_train_test(df, objective_col="temperature_2m_target")
+   
    
    if stage == "lineales":
        logger.info("Entrenando modelos lineales.")
@@ -845,9 +1127,137 @@ def main(stage: str):
        # Ejecutar análisis SHAP paso a paso
        shap_results = analisis_shap(modelo_cargado, x_train, x_test, output_dir="reports/figures/shap")
    
+   elif stage == "lstm":
+       logger.info("Iniciando entrenamiento LSTM...")
+       
+       # Importar TensorFlow solo cuando sea necesario
+       try:
+           import tensorflow as tf
+           from tensorflow.keras import layers, models, callbacks, optimizers
+       except ImportError as e:
+           logger.error(f"Error al importar TensorFlow: {e}")
+           logger.error("Para usar LSTM necesitas instalar TensorFlow: pip install tensorflow")
+           return
+       
+       # Separar datos específicamente para LSTM
+       logger.info("Separando datos de junio para predicción...")
+       df_train = separar_datos_prediccion(df, mes_prediccion=6, ruta_salida="data/predict_data/predict.xlsx")
+       
+       # Generar columnas de estacionalidad
+       logger.info("Generando columnas de estacionalidad.")
+       df_train_lstm = columnas_estacionalidad(df_train)
+       
+       # División específica para LSTM (train/val/test)
+       logger.info("Dividiendo los datos para LSTM (train/val/test).")
+       x_train_df, y_train_df, x_val_df, y_val_df, x_test_df, y_test_df = dividir_train_test_lstm(df_train_lstm, objective_col="temperature_2m_target")
+       
+       # Crear ventanas deslizantes para LSTM
+       logger.info("Creando ventanas deslizantes para LSTM...")
+       features_lstm = [col for col in x_train_df.columns if col != "time"]
+       
+       # Reconstruir DataFrame completo para lstm_window
+       df_full_train = pd.concat([x_train_df.reset_index(drop=True), y_train_df.reset_index(drop=True)], axis=1)
+       df_full_val = pd.concat([x_val_df.reset_index(drop=True), y_val_df.reset_index(drop=True)], axis=1)
+       df_full_test = pd.concat([x_test_df.reset_index(drop=True), y_test_df.reset_index(drop=True)], axis=1)
+       
+       # Crear ventanas para cada conjunto
+       x_train_lstm, y_train_lstm, _ = lstm_window(df_full_train, features_lstm, "temperature_2m_target", window_size=48, horizon=3)
+       x_val_lstm, y_val_lstm, _ = lstm_window(df_full_val, features_lstm, "temperature_2m_target", window_size=48, horizon=3)
+       x_test_lstm, y_test_lstm, _ = lstm_window(df_full_test, features_lstm, "temperature_2m_target", window_size=48, horizon=3)
+       
+       logger.info(f"Formas de los datos LSTM:")
+       logger.info(f"Train: x={x_train_lstm.shape}, y={y_train_lstm.shape}")
+       logger.info(f"Val: x={x_val_lstm.shape}, y={y_val_lstm.shape}")
+       logger.info(f"Test: x={x_test_lstm.shape}, y={y_test_lstm.shape}")
+       
+       # Escalado de datos
+       logger.info("Escalando datos para LSTM...")
+       x_train_scaled, x_val_scaled, x_test_scaled, scaler = scale_lstm(x_train_lstm, x_val_lstm, x_test_lstm)
+       
+       # Entrenamiento del modelo LSTM
+       logger.info("Entrenando modelo LSTM...")
+       model_lstm, history = train_lstm(
+           x_train_scaled, y_train_lstm,
+           x_val_scaled, y_val_lstm,
+           units=64,
+           dropout=0.2,
+           lr=1e-3,
+           batch_size=32,
+           epochs=500,
+           patience=20,
+           verbose=1,
+           output_path="models/lstm_final.h5"
+       )
+       
+       # Evaluación del modelo
+       logger.info("Evaluando modelo LSTM en conjunto de test...")
+       test_metrics = evaluate(model_lstm, x_test_scaled, y_test_lstm, prefix="test")
+       
+       # Generar gráficas de aprendizaje
+       logger.info("Generando curvas de aprendizaje...")
+       learning_curves_path = "reports/figures/curvas aprendizaje/lstm_sol/lstm_learning_curves.png"
+       final_training_metrics = plot_lstm_learning_curves(history, learning_curves_path)
+       
+       logger.info("=" * 50)
+       logger.info("RESULTADOS FINALES LSTM")
+       logger.info("=" * 50)
+       logger.info(f"RMSE en test: {test_metrics['test_rmse']:.4f}")
+       logger.info(f"MAE en test: {test_metrics['test_mae']:.4f}")
+       logger.info(f"Epochs entrenadas: {final_training_metrics['epochs_trained']}")
+       logger.info(f"Mejor época: {final_training_metrics['best_epoch']} (val_loss: {final_training_metrics['best_val_loss']:.4f})")
+       
+       # Guardar metadatos del modelo LSTM
+       metadatos_lstm = {
+           "nombre_modelo": "LSTM",
+           "fecha_entrenamiento": datetime.now().isoformat(),
+           "version": "1.0.0",
+           "target": "temperature_2m_target",
+           "arquitectura": {
+               "window_size": 48,
+               "horizon": 3,
+               "units": 64,
+               "dropout": 0.2,
+               "learning_rate": 1e-3
+           },
+           "metricas": {
+               "test_rmse": float(test_metrics['test_rmse']),
+               "test_mae": float(test_metrics['test_mae']),
+               "final_train_rmse": float(final_training_metrics['final_train_rmse']),
+               "final_val_rmse": float(final_training_metrics['final_val_rmse']),
+               "final_train_mae": float(final_training_metrics['final_train_mae']),
+               "final_val_mae": float(final_training_metrics['final_val_mae']),
+               "best_val_loss": float(final_training_metrics['best_val_loss']),
+               "best_epoch": int(final_training_metrics['best_epoch']),
+               "epochs_trained": int(final_training_metrics['epochs_trained'])
+           },
+           "features": features_lstm,
+           "n_features": len(features_lstm),
+           "n_muestras_train": len(y_train_lstm),
+           "n_muestras_val": len(y_val_lstm),
+           "n_muestras_test": len(y_test_lstm),
+           "ruta_modelo": "models/lstm_final.h5",
+           "ruta_curvas_aprendizaje": learning_curves_path,
+           "scaler_info": {
+               "tipo": "StandardScaler",
+               "parametros": {
+                   "mean": scaler.mean_.tolist(),
+                   "scale": scaler.scale_.tolist()
+               }
+           }
+       }
+       
+       # Guardar metadatos
+       guardar_metadatos(metadatos_lstm, "models/metadata/lstm_metadatos.json")
+       
+       # Guardar el scaler por separado
+       joblib.dump(scaler, "models/lstm_scaler.joblib")
+       logger.info("Scaler guardado en: models/lstm_scaler.joblib")
+       
+       logger.info("Entrenamiento LSTM completado exitosamente.")
+   
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--stage", type=str, default="lineales",
-                        choices=["separar_datos", "lineales", "xgboost", "shap"])
+    parser.add_argument("--stage", type=str, default="lstm",
+                        choices=["separar_datos", "lineales", "xgboost", "shap", "lstm"])
     args = parser.parse_args()
     main(args.stage)
