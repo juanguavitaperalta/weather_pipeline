@@ -1,0 +1,18 @@
+{
+    "best_params": {
+        "filters": 48,
+        "kernel_size": 4,
+        "lstm1_units": 96,
+        "lstm2_units": 32,
+        "dropout": 0.21390660517314458,
+        "recurrent_dropout": 0.00043047388532515554,
+        "learning_rate": 0.002253603727075875,
+        "batch_size": 64,
+        "use_causal_padding": false,
+        "optimizer": "adam"
+    },
+    "best_value": 1.4431339502334595,
+    "best_trial": 1,
+    "n_trials": 30,
+    "timestamp": "2026-02-15T09:05:12.541167"
+}

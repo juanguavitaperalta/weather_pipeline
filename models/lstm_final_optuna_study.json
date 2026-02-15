@@ -1,0 +1,529 @@
+{
+    "best_trial_number": 1,
+    "best_value": 1.4431339502334595,
+    "best_params": {
+        "filters": 48,
+        "kernel_size": 4,
+        "lstm1_units": 96,
+        "lstm2_units": 32,
+        "dropout": 0.21390660517314458,
+        "recurrent_dropout": 0.00043047388532515554,
+        "learning_rate": 0.002253603727075875,
+        "batch_size": 64,
+        "use_causal_padding": false,
+        "optimizer": "adam"
+    },
+    "n_trials": 30,
+    "trials_summary": [
+        {
+            "number": 0,
+            "value": 2.3706326484680176,
+            "params": {
+                "filters": 16,
+                "kernel_size": 2,
+                "lstm1_units": 32,
+                "lstm2_units": 64,
+                "dropout": 0.3761547744366024,
+                "recurrent_dropout": 0.10932099463130802,
+                "learning_rate": 0.0007090548850567374,
+                "batch_size": 16,
+                "use_causal_padding": true,
+                "optimizer": "rmsprop"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 1,
+            "value": 1.4431339502334595,
+            "params": {
+                "filters": 48,
+                "kernel_size": 4,
+                "lstm1_units": 96,
+                "lstm2_units": 32,
+                "dropout": 0.21390660517314458,
+                "recurrent_dropout": 0.00043047388532515554,
+                "learning_rate": 0.002253603727075875,
+                "batch_size": 64,
+                "use_causal_padding": false,
+                "optimizer": "adam"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 2,
+            "value": 1.7828519344329834,
+            "params": {
+                "filters": 48,
+                "kernel_size": 4,
+                "lstm1_units": 96,
+                "lstm2_units": 32,
+                "dropout": 0.10227318648391909,
+                "recurrent_dropout": 0.16963031835217005,
+                "learning_rate": 0.00033090604499414573,
+                "batch_size": 16,
+                "use_causal_padding": false,
+                "optimizer": "rmsprop"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 3,
+            "value": 2.2761902809143066,
+            "params": {
+                "filters": 16,
+                "kernel_size": 4,
+                "lstm1_units": 128,
+                "lstm2_units": 16,
+                "dropout": 0.30505379050667186,
+                "recurrent_dropout": 0.14197396143598143,
+                "learning_rate": 0.005291010455648176,
+                "batch_size": 64,
+                "use_causal_padding": false,
+                "optimizer": "sgd"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 4,
+            "value": 1.589867353439331,
+            "params": {
+                "filters": 48,
+                "kernel_size": 5,
+                "lstm1_units": 32,
+                "lstm2_units": 64,
+                "dropout": 0.20079135896684533,
+                "recurrent_dropout": 0.05877345084546151,
+                "learning_rate": 0.0004911567348754592,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adamw"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 5,
+            "value": Infinity,
+            "params": {
+                "filters": 16,
+                "kernel_size": 3,
+                "lstm1_units": 96,
+                "lstm2_units": 32,
+                "dropout": 0.1622368826768236,
+                "recurrent_dropout": 0.044642306659667286,
+                "learning_rate": 0.0005328450059430357,
+                "batch_size": 16,
+                "use_causal_padding": true,
+                "optimizer": "sgd"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 6,
+            "value": 1.6747688055038452,
+            "params": {
+                "filters": 16,
+                "kernel_size": 2,
+                "lstm1_units": 96,
+                "lstm2_units": 16,
+                "dropout": 0.10488680361662159,
+                "recurrent_dropout": 0.002463103345994977,
+                "learning_rate": 0.0008630940925523986,
+                "batch_size": 16,
+                "use_causal_padding": false,
+                "optimizer": "sgd"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 7,
+            "value": Infinity,
+            "params": {
+                "filters": 32,
+                "kernel_size": 4,
+                "lstm1_units": 64,
+                "lstm2_units": 16,
+                "dropout": 0.16017132870032236,
+                "recurrent_dropout": 0.09550009616595322,
+                "learning_rate": 0.0005800437216932343,
+                "batch_size": 64,
+                "use_causal_padding": false,
+                "optimizer": "sgd"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 8,
+            "value": Infinity,
+            "params": {
+                "filters": 48,
+                "kernel_size": 3,
+                "lstm1_units": 64,
+                "lstm2_units": 48,
+                "dropout": 0.35439199704800894,
+                "recurrent_dropout": 0.10388065543395152,
+                "learning_rate": 0.005344625279144868,
+                "batch_size": 16,
+                "use_causal_padding": false,
+                "optimizer": "adam"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 9,
+            "value": Infinity,
+            "params": {
+                "filters": 64,
+                "kernel_size": 4,
+                "lstm1_units": 32,
+                "lstm2_units": 16,
+                "dropout": 0.30498336382870583,
+                "recurrent_dropout": 0.031522741444431415,
+                "learning_rate": 0.005902443248750564,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adamw"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 10,
+            "value": Infinity,
+            "params": {
+                "filters": 64,
+                "kernel_size": 5,
+                "lstm1_units": 128,
+                "lstm2_units": 48,
+                "dropout": 0.24371088073599353,
+                "recurrent_dropout": 0.005588716204623549,
+                "learning_rate": 0.0018493312160156629,
+                "batch_size": 64,
+                "use_causal_padding": true,
+                "optimizer": "adam"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 11,
+            "value": Infinity,
+            "params": {
+                "filters": 48,
+                "kernel_size": 5,
+                "lstm1_units": 64,
+                "lstm2_units": 64,
+                "dropout": 0.2212056233054593,
+                "recurrent_dropout": 0.06041116835924617,
+                "learning_rate": 0.0001250028160145522,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adamw"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 12,
+            "value": 1.6156892776489258,
+            "params": {
+                "filters": 32,
+                "kernel_size": 5,
+                "lstm1_units": 32,
+                "lstm2_units": 48,
+                "dropout": 0.20040709783276672,
+                "recurrent_dropout": 0.06959235718122891,
+                "learning_rate": 0.0018443270181882463,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adam"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 13,
+            "value": Infinity,
+            "params": {
+                "filters": 48,
+                "kernel_size": 5,
+                "lstm1_units": 96,
+                "lstm2_units": 32,
+                "dropout": 0.29719740798425,
+                "recurrent_dropout": 0.03216546546781429,
+                "learning_rate": 0.0019725637913586124,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adamw"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 14,
+            "value": Infinity,
+            "params": {
+                "filters": 64,
+                "kernel_size": 3,
+                "lstm1_units": 64,
+                "lstm2_units": 64,
+                "dropout": 0.17576334967497384,
+                "recurrent_dropout": 0.07477619934099713,
+                "learning_rate": 0.0002081363443331595,
+                "batch_size": 64,
+                "use_causal_padding": true,
+                "optimizer": "adamw"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 15,
+            "value": Infinity,
+            "params": {
+                "filters": 32,
+                "kernel_size": 5,
+                "lstm1_units": 128,
+                "lstm2_units": 48,
+                "dropout": 0.25725849221163194,
+                "recurrent_dropout": 0.015698226893722286,
+                "learning_rate": 0.0030153261999658586,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adam"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 16,
+            "value": Infinity,
+            "params": {
+                "filters": 48,
+                "kernel_size": 4,
+                "lstm1_units": 32,
+                "lstm2_units": 32,
+                "dropout": 0.2082948279991191,
+                "recurrent_dropout": 0.0490273753882425,
+                "learning_rate": 0.0012498480632172147,
+                "batch_size": 64,
+                "use_causal_padding": false,
+                "optimizer": "adamw"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 17,
+            "value": Infinity,
+            "params": {
+                "filters": 32,
+                "kernel_size": 5,
+                "lstm1_units": 64,
+                "lstm2_units": 64,
+                "dropout": 0.26460490851296165,
+                "recurrent_dropout": 0.1363781509432037,
+                "learning_rate": 0.00031860647799871004,
+                "batch_size": 64,
+                "use_causal_padding": false,
+                "optimizer": "adam"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 18,
+            "value": Infinity,
+            "params": {
+                "filters": 64,
+                "kernel_size": 4,
+                "lstm1_units": 96,
+                "lstm2_units": 48,
+                "dropout": 0.13337419514369742,
+                "recurrent_dropout": 0.1955824703022695,
+                "learning_rate": 0.009173029971842881,
+                "batch_size": 32,
+                "use_causal_padding": true,
+                "optimizer": "rmsprop"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 19,
+            "value": Infinity,
+            "params": {
+                "filters": 48,
+                "kernel_size": 3,
+                "lstm1_units": 128,
+                "lstm2_units": 32,
+                "dropout": 0.1911305681538687,
+                "recurrent_dropout": 0.02747351240573785,
+                "learning_rate": 0.0012403105805150762,
+                "batch_size": 64,
+                "use_causal_padding": false,
+                "optimizer": "adam"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 20,
+            "value": Infinity,
+            "params": {
+                "filters": 32,
+                "kernel_size": 5,
+                "lstm1_units": 32,
+                "lstm2_units": 64,
+                "dropout": 0.22551147904786029,
+                "recurrent_dropout": 0.08543604568040987,
+                "learning_rate": 0.0029787421199235285,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adamw"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 21,
+            "value": Infinity,
+            "params": {
+                "filters": 32,
+                "kernel_size": 5,
+                "lstm1_units": 32,
+                "lstm2_units": 48,
+                "dropout": 0.1969621653348971,
+                "recurrent_dropout": 0.06462118278247249,
+                "learning_rate": 0.0020561795917557286,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adam"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 22,
+            "value": Infinity,
+            "params": {
+                "filters": 48,
+                "kernel_size": 5,
+                "lstm1_units": 32,
+                "lstm2_units": 48,
+                "dropout": 0.1356490746109662,
+                "recurrent_dropout": 0.11738394243054409,
+                "learning_rate": 0.003085161685390836,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adam"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 23,
+            "value": Infinity,
+            "params": {
+                "filters": 32,
+                "kernel_size": 4,
+                "lstm1_units": 64,
+                "lstm2_units": 32,
+                "dropout": 0.23398437324424035,
+                "recurrent_dropout": 0.07549263636521371,
+                "learning_rate": 0.001159980063474288,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adam"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 24,
+            "value": Infinity,
+            "params": {
+                "filters": 48,
+                "kernel_size": 5,
+                "lstm1_units": 32,
+                "lstm2_units": 64,
+                "dropout": 0.2856639712744605,
+                "recurrent_dropout": 0.053240839315819216,
+                "learning_rate": 0.0004493769714198544,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adam"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 25,
+            "value": Infinity,
+            "params": {
+                "filters": 32,
+                "kernel_size": 4,
+                "lstm1_units": 64,
+                "lstm2_units": 48,
+                "dropout": 0.18818858844840755,
+                "recurrent_dropout": 0.12549668101638983,
+                "learning_rate": 0.0016524811155620238,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adam"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 26,
+            "value": Infinity,
+            "params": {
+                "filters": 48,
+                "kernel_size": 5,
+                "lstm1_units": 96,
+                "lstm2_units": 32,
+                "dropout": 0.13596873626885358,
+                "recurrent_dropout": 0.0896241727350161,
+                "learning_rate": 0.0008319443521526838,
+                "batch_size": 64,
+                "use_causal_padding": true,
+                "optimizer": "adamw"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 27,
+            "value": Infinity,
+            "params": {
+                "filters": 64,
+                "kernel_size": 5,
+                "lstm1_units": 32,
+                "lstm2_units": 48,
+                "dropout": 0.2126287431610226,
+                "recurrent_dropout": 0.041253246415806286,
+                "learning_rate": 0.00021117316019873882,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "rmsprop"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 28,
+            "value": Infinity,
+            "params": {
+                "filters": 32,
+                "kernel_size": 4,
+                "lstm1_units": 64,
+                "lstm2_units": 64,
+                "dropout": 0.2723658012909026,
+                "recurrent_dropout": 0.021370672116971044,
+                "learning_rate": 0.00382280005893906,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adam"
+            },
+            "state": "COMPLETE"
+        },
+        {
+            "number": 29,
+            "value": Infinity,
+            "params": {
+                "filters": 16,
+                "kernel_size": 2,
+                "lstm1_units": 32,
+                "lstm2_units": 64,
+                "dropout": 0.33170444715855,
+                "recurrent_dropout": 0.07057325806734255,
+                "learning_rate": 0.0006918460990660689,
+                "batch_size": 64,
+                "use_causal_padding": true,
+                "optimizer": "rmsprop"
+            },
+            "state": "COMPLETE"
+        }
+    ]
+}

@@ -142,4 +142,132 @@ Los hiperparámetros del modelo XGBoost entrenado se encuentran en:
 
 ---
 
+## 4. Entrenamiento de Modelo LSTM con Optuna
+
+### LSTM - Red Neuronal Recurrente diagrama
+
+```mermaid
+flowchart TD
+  X[Ventanas temporales 48h] --> S[Escalado StandardScaler]
+  S --> C[Conv1D: Extracción de patrones]
+  C --> L1[LSTM Capa 1: Memoria temporal]
+  L1 --> L2[LSTM Capa 2: Abstracción]
+  L2 --> D[Dense: Predicción]
+  D --> Y[Temperatura t+3h]
+  
+  O[Optuna] -.-> |Optimiza hiperparámetros| C
+  O -.-> L1
+  O -.-> L2
+```
+
+### Arquitectura Conv1D + LSTM
+
+El modelo LSTM implementado utiliza una arquitectura híbrida que combina capas convolucionales con redes recurrentes:
+
+1. **Capa Conv1D**: Extrae patrones locales de las series temporales (tendencias a corto plazo)
+2. **LSTM Capa 1**: Captura dependencias temporales de largo plazo con memoria (return_sequences=True)
+3. **LSTM Capa 2**: Abstrae la información temporal en representación final
+4. **Capa Dense**: Genera la predicción de temperatura
+
+### Optimización con Optuna
+
+En lugar de hiperparámetros fijos, se utiliza **Optuna** (optimización bayesiana) para encontrar la mejor combinación de hiperparámetros:
+
+**Hiperparámetros optimizados:**
+- `filters`: Número de filtros en Conv1D (16-64)
+- `kernel_size`: Tamaño del kernel convolucional (2-5)
+- `lstm1_units`: Unidades en primera capa LSTM (32-128)
+- `lstm2_units`: Unidades en segunda capa LSTM (16-64)
+- `dropout`: Tasa de dropout (0.1-0.4)
+- `recurrent_dropout`: Dropout recurrente (0.0-0.2)
+- `learning_rate`: Tasa de aprendizaje (1e-4 a 1e-2, escala log)
+- `batch_size`: Tamaño de batch (16, 32, 64)
+- `use_causal_padding`: Padding causal para Conv1D (True/False)
+- `optimizer`: Optimizador ('adam', 'adamw', 'rmsprop', 'sgd')
+
+**Proceso de optimización:**
+- 30 trials (combinaciones de hiperparámetros)
+- Pruning inteligente: descarta trials no prometedores tempranamente
+- Early stopping: detiene entrenamiento si no mejora por 40 épocas
+- Métrica objetivo: Minimizar validation loss
+
+### Hiperparámetros del Modelo Final
+
+Los mejores hiperparámetros encontrados:
+
+```json
+{
+    "filters": 48,
+    "kernel_size": 4,
+    "lstm1_units": 96,
+    "lstm2_units": 32,
+    "dropout": 0.214,
+    "recurrent_dropout": 0.00043,
+    "learning_rate": 0.00225,
+    "batch_size": 64,
+    "use_causal_padding": false,
+    "optimizer": "adam"
+}
+```
+
+**Validation Loss:** 1.443°C  
+**Encontrado en:** Trial #1 de 30
+
+### Curvas de Entrenamiento LSTM
+
+<p align="center">
+  <img src="../reports/figures/curvas%20aprendizaje/lstm_sol/lstm_learning_curves.png" width="700">
+</p>
+
+Las curvas de loss (entrenamiento vs validación) muestran:
+- Convergencia adecuada sin overfitting
+- Early stopping activado en la época óptima
+- Modelo generaliza bien a datos de validación
+
+### Visualizaciones de Optuna
+
+#### Optimization History
+<p align="center">
+  <img src="../reports/figures/optuna/optimization_history.png" width="700">
+</p>
+
+Muestra la evolución del mejor valor objetivo a lo largo de los trials. Se observa que el mejor resultado se encontró tempranamente (trial #1).
+
+#### Timeline de Trials
+<p align="center">
+  <img src="../reports/figures/optuna/timeline.png" width="700">
+</p>
+
+Visualiza la duración de cada trial. Los trials más cortos fueron podados (pruning) por no ser prometedores.
+
+#### Parameter Importances
+<p align="center">
+  <img src="../reports/figures/optuna/param_importances.png" width="700">
+</p>
+
+Identifica qué hiperparámetros tienen mayor impacto en el desempeño del modelo. Los más importantes son típicamente learning_rate, lstm1_units, y batch_size.
+
+### Predicciones LSTM
+
+<p align="center">
+  <img src="../reports/figures/predicciones/lstm_pred_vs_actual.png" width="700">
+</p>
+
+Comparación entre predicciones del modelo LSTM y valores reales en el conjunto de test.
+
+### Ventajas del LSTM
+
+✅ **Memoria temporal**: Captura patrones de largo plazo (dependencias entre horas/días)  
+✅ **No linealidad**: Modela interacciones complejas entre variables  
+✅ **Optimización automática**: Optuna encuentra la mejor configuración  
+✅ **Robustez**: Conv1D + LSTM extraen características a diferentes escalas  
+
+### Limitaciones
+
+⚠️ **Tiempo de entrenamiento**: Más lento que modelos lineales o XGBoost  
+⚠️ **Interpretabilidad**: Más difícil de interpretar que modelos lineales  
+⚠️ **Recursos**: Requiere más memoria y poder computacional  
+
+---
+
 [← Volver al README principal](../README.md)

@@ -1,3 +1,20 @@
+
+import os
+# Workaround típico para conflicto OpenMP en Windows (MKL/oneDNN)
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+
+# Opcional: menos ruido en logs
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
+# Opcional: apagar oneDNN si quieres reproducibilidad total
+# os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+
+import tensorflow as tf
+print("TensorFlow OK:", tf.__version__)
+
+
+
+
 from sklearn.linear_model import Lasso, Ridge, ElasticNet
 import pandas as pd
 import logging
@@ -16,8 +33,6 @@ from datetime import datetime
 from sklearn.preprocessing import StandardScaler
 import numpy as np
 from typing import Dict, Tuple
-
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -892,65 +907,269 @@ def scale_lstm(x_train: np.ndarray, x_val: np.ndarray, x_test: np.ndarray, scale
 
     return x_train_scaled, x_val_scaled, x_test_scaled, scaler
 
-def train_lstm(x_train: np.ndarray, y_train: np.ndarray, x_val: np.ndarray, y_val: np.ndarray,*, units: int = 64, dropout: float = 0.2, lr: float = 1e-3,
-               batch_size: int = 32, epochs: int = 500, patience: int = 40, 
-               verbose: int=1, output_path: str = "models/lstm_final.h5"):
-    """Entrena un modelo LSTM con early stopping"""
+def build_model(hparams: dict, input_shape: tuple) -> tuple:
+    """
+    Construye y compila un modelo LSTM con Conv1D y los hiperparámetros dados.
+    
+    Arquitectura:
+        Input -> Conv1D -> LSTM #1 -> LSTM #2 -> Dense (output)
+    
+    Args:
+        hparams: Diccionario con hiperparámetros (filters, kernel_size, lstm1_units, 
+                 lstm2_units, dropout, recurrent_dropout, learning_rate, batch_size, etc.)
+        input_shape: Tupla (window_size, n_features) para la forma de entrada
+    
+    Returns:
+        tuple: (modelo compilado, batch_size)
+    """
     try:
         import tensorflow as tf
-        from tensorflow.keras import layers, models, callbacks, optimizers
+        from tensorflow.keras import layers, models, optimizers
     except ImportError as e:
         logger.error(f"Error al importar TensorFlow: {e}")
         logger.error("Para usar LSTM instala TensorFlow: pip install tensorflow")
         return None, None
     
     tf.keras.backend.clear_session()
-    lookback = x_train.shape[1]
-    n_features = x_train.shape[2]
-
-    modelo = models.Sequential(
-        [
-            layers.Input(shape=(lookback, n_features)),
-            layers.LSTM(units, return_sequences=False),
-            layers.Dropout(dropout),
-            layers.Dense(32, activation="relu"),
-            layers.Dense(1)
-        ]
-    )
-
+    
+    # Extraer hiperparámetros
+    filters = hparams.get('filters', 32)
+    kernel_size = hparams.get('kernel_size', 3)
+    lstm1_units = hparams.get('lstm1_units', 64)
+    lstm2_units = hparams.get('lstm2_units', 32)
+    dropout = hparams.get('dropout', 0.2)
+    recurrent_dropout = hparams.get('recurrent_dropout', 0.1)
+    learning_rate = hparams.get('learning_rate', 1e-3)
+    batch_size = hparams.get('batch_size', 32)
+    use_causal_padding = hparams.get('use_causal_padding', False)
+    optimizer_name = hparams.get('optimizer', 'adam')
+    
+    # Construir modelo secuencial
+    modelo = models.Sequential()
+    modelo.add(layers.Input(shape=input_shape))
+    
+    # Capa Conv1D
+    padding = 'causal' if use_causal_padding else 'same'
+    modelo.add(layers.Conv1D(
+        filters=filters,
+        kernel_size=kernel_size,
+        activation='relu',
+        padding=padding
+    ))
+    
+    # LSTM #1 (return_sequences=True para pasar a la siguiente LSTM)
+    modelo.add(layers.LSTM(
+        units=lstm1_units,
+        return_sequences=True,
+        dropout=dropout,
+        recurrent_dropout=recurrent_dropout
+    ))
+    
+    # LSTM #2 (return_sequences=False para salida final)
+    modelo.add(layers.LSTM(
+        units=lstm2_units,
+        return_sequences=False,
+        dropout=dropout
+    ))
+    
+    # Capa Dense de salida (regresión)
+    modelo.add(layers.Dense(1, activation='linear'))
+    
+    # Compilar modelo con el optimizador seleccionado
+    optimizer_name = optimizer_name.lower()
+    if optimizer_name == 'adam':
+        optimizer = optimizers.Adam(learning_rate=learning_rate)
+    elif optimizer_name == 'adamw':
+        optimizer = optimizers.AdamW(learning_rate=learning_rate)
+    elif optimizer_name == 'rmsprop':
+        optimizer = optimizers.RMSprop(learning_rate=learning_rate)
+    elif optimizer_name == 'sgd':
+        optimizer = optimizers.SGD(learning_rate=learning_rate, momentum=0.9, nesterov=True)
+    else:
+        logger.warning(f"Optimizador '{optimizer_name}' no reconocido. Usando Adam por defecto.")
+        optimizer = optimizers.Adam(learning_rate=learning_rate)
+    
     modelo.compile(
-        optimizer=optimizers.Adam(learning_rate=lr),
+        optimizer=optimizer,
         loss="mse",
-        metrics=[tf.keras.metrics.RootMeanSquaredError(name="rmse"),
-                 tf.keras.metrics.MeanAbsoluteError(name="mae")],
+        metrics=[
+            tf.keras.metrics.RootMeanSquaredError(name="rmse"),
+            tf.keras.metrics.MeanAbsoluteError(name="mae")
+        ],
     )
-
-    call_back:list = [callbacks.EarlyStopping(monitor="val_loss", patience=patience, restore_best_weights=True)] 
-
-    if output_path:
-        call_back.append(callbacks.ModelCheckpoint(output_path, monitor="val_loss", save_best_only=True, save_weights_only=False))
+    
+    return modelo, batch_size
 
 
-    history = modelo.fit(
-        x_train,
-        y_train,
-        validation_data=(x_val, y_val),
-        epochs=epochs,
-        batch_size=batch_size,
-        shuffle=False,  # IMPORTANTÍSIMO en series de tiempo
-        callbacks=call_back,
-        verbose=verbose,
-    )
-
-    # Si guardaste el mejor, lo recargas para garantizar que devuelves el óptimo
-    if output_path:
+def train_lstm(x_train: np.ndarray, y_train: np.ndarray, x_val: np.ndarray, y_val: np.ndarray,
+               n_trials, epochs, patience: int = 40, 
+               verbose: int = 1, output_path: str = "models/lstm_final.h5",
+               optuna_db: str = "sqlite:///models/optuna_lstm.db"):
+    """
+    Entrena un modelo LSTM usando Optuna para optimización de hiperparámetros.
+    
+    Args:
+        x_train: Datos de entrenamiento (samples, window_size, features)
+        y_train: Target de entrenamiento
+        x_val: Datos de validación
+        y_val: Target de validación
+        n_trials: Número de trials para Optuna
+        epochs: Épocas máximas por trial
+        patience: Paciencia para early stopping
+        verbose: Nivel de verbosidad
+        output_path: Ruta para guardar el mejor modelo
+        optuna_db: Ruta de la base de datos de Optuna
+    
+    Returns:
+        tuple: (mejor_modelo, mejor_history, study)
+    """
+    try:
+        import tensorflow as tf
+        from tensorflow.keras import callbacks
+        import optuna
+        from optuna.integration import TFKerasPruningCallback
+    except ImportError as e:
+        logger.error(f"Error al importar dependencias: {e}")
+        logger.error("Instala las dependencias: pip install tensorflow optuna")
+        return None, None, None
+    
+    input_shape = (x_train.shape[1], x_train.shape[2])
+    
+    # Variable para guardar el mejor modelo y su historia
+    best_model_info = {'model': None, 'history': None, 'val_loss': float('inf')}
+    
+    def objective(trial):
+        """Función objetivo para Optuna"""
+        tf.keras.backend.clear_session()
+        
+        # Muestrear hiperparámetros para arquitectura Conv1D + LSTM
+        hparams = {
+            'filters': trial.suggest_int('filters', 16, 64, step=16),
+            'kernel_size': trial.suggest_int('kernel_size', 2, 5),
+            'lstm1_units': trial.suggest_int('lstm1_units', 32, 128, step=32),
+            'lstm2_units': trial.suggest_int('lstm2_units', 16, 64, step=16),
+            'dropout': trial.suggest_float('dropout', 0.1, 0.4),
+            'recurrent_dropout': trial.suggest_float('recurrent_dropout', 0.0, 0.2),
+            'learning_rate': trial.suggest_float('learning_rate', 1e-4, 1e-2, log=True),
+            'batch_size': trial.suggest_categorical('batch_size', [16, 32, 64]),
+            'use_causal_padding': trial.suggest_categorical('use_causal_padding', [True, False]),
+            'optimizer': trial.suggest_categorical('optimizer', ['adam', 'adamw', 'rmsprop', 'sgd'])
+        }
+        
+        # Construir modelo
+        model, batch_size = build_model(hparams, input_shape)
+        
+        if model is None:
+            return float('inf')
+        
+        # Callbacks
+        callbacks_list = [
+            callbacks.EarlyStopping(
+                monitor="val_loss", 
+                patience=patience, 
+                restore_best_weights=True,
+                verbose=0
+            ),
+            TFKerasPruningCallback(trial, "val_loss")
+        ]
+        
+        # Entrenar modelo
         try:
-            modelo = tf.keras.models.load_model(output_path)
-        except Exception:
-            # si algo falla, al menos devuelves el que tiene restore_best_weights=True
-            pass
-
-    return modelo, history
+            history = model.fit(
+                x_train, y_train,
+                validation_data=(x_val, y_val),
+                epochs=epochs,
+                batch_size=batch_size,
+                shuffle=False,
+                callbacks=callbacks_list,
+                verbose=0 if verbose == 0 else 1
+            )
+            
+            # Obtener el mejor val_loss
+            val_loss = min(history.history['val_loss'])
+            
+            # Guardar el mejor modelo globalmente
+            if val_loss < best_model_info['val_loss']:
+                best_model_info['model'] = model
+                best_model_info['history'] = history
+                best_model_info['val_loss'] = val_loss
+                logger.info(f"Nuevo mejor modelo encontrado: val_loss = {val_loss:.6f}")
+            
+            return val_loss
+            
+        except Exception as e:
+            logger.error(f"Error durante entrenamiento del trial {trial.number}: {e}")
+            return float('inf')
+    
+    # Crear y ejecutar estudio Optuna
+    logger.info("="*70)
+    logger.info("INICIANDO OPTIMIZACIÓN DE HIPERPARÁMETROS CON OPTUNA")
+    logger.info("="*70)
+    
+    # Crear un nombre de estudio único por timestamp para no acumular trials pasados
+    study_name = f"lstm_optimization_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    study = optuna.create_study(
+        direction="minimize",
+        pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=10),
+        study_name=study_name,
+        storage=optuna_db,
+        load_if_exists=False
+    )
+    
+    study.optimize(objective, n_trials=n_trials, show_progress_bar=True)
+    
+    # Resultados de la optimización
+    logger.info("="*70)
+    logger.info("OPTIMIZACIÓN COMPLETADA")
+    logger.info("="*70)
+    logger.info(f"Mejor trial: {study.best_trial.number}")
+    logger.info(f"Mejor val_loss: {study.best_value:.6f}")
+    logger.info(f"Mejores hiperparámetros:")
+    for key, value in study.best_params.items():
+        logger.info(f"  {key}: {value}")
+    
+    # Guardar el mejor modelo
+    if best_model_info['model'] is not None:
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        best_model_info['model'].save(output_path)
+        logger.info(f"Mejor modelo guardado en: {output_path}")
+        
+        # Guardar mejores hiperparámetros en JSON
+        best_params_path = output_path.replace('.h5', '_best_params.json').replace('.keras', '_best_params.json')
+        with open(best_params_path, 'w') as f:
+            json.dump({
+                'best_params': study.best_params,
+                'best_value': study.best_value,
+                'best_trial': study.best_trial.number,
+                'n_trials': len(study.trials),
+                'timestamp': datetime.now().isoformat()
+            }, f, indent=4)
+        logger.info(f"Mejores parámetros guardados en: {best_params_path}")
+        
+        # Guardar resumen del estudio
+        study_summary_path = output_path.replace('.h5', '_optuna_study.json').replace('.keras', '_optuna_study.json')
+        study_summary = {
+            'best_trial_number': study.best_trial.number,
+            'best_value': study.best_value,
+            'best_params': study.best_params,
+            'n_trials': len(study.trials),
+            'trials_summary': [
+                {
+                    'number': trial.number,
+                    'value': trial.value,
+                    'params': trial.params,
+                    'state': trial.state.name
+                }
+                for trial in study.trials
+            ]
+        }
+        with open(study_summary_path, 'w') as f:
+            json.dump(study_summary, f, indent=4)
+        logger.info(f"Resumen del estudio guardado en: {study_summary_path}")
+    else:
+        logger.warning("No se pudo entrenar ningún modelo exitosamente")
+    
+    return best_model_info['model'], best_model_info['history'], study
 
 
 def evaluate(model, x_test: np.ndarray, y_test: np.ndarray, *, prefix: str = "test") -> Dict[str, float]:
@@ -978,10 +1197,183 @@ def evaluate(model, x_test: np.ndarray, y_test: np.ndarray, *, prefix: str = "te
         f"{prefix}_rmse": rmse,
         f"{prefix}_mae": mae,
         f"{prefix}_mape": mape,
+        f"{prefix}_predictions": y_pred,
     }
 
     print(out)
     return out
+
+
+def plot_optuna_study(study, output_dir: str = "reports/figures/optuna"):
+    """
+    Genera gráficos estáticos de análisis del estudio de Optuna.
+    
+    Args:
+        study: Estudio de Optuna completado
+        output_dir: Directorio donde guardar las figuras
+    """
+    try:
+        import optuna
+        from optuna.visualization.matplotlib import (
+            plot_optimization_history,
+            plot_param_importances,
+            plot_timeline,
+            plot_pareto_front
+        )
+    except ImportError as e:
+        logger.error(f"Error al importar Optuna: {e}")
+        logger.error("Instala Optuna: pip install optuna")
+        return
+    
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    
+    # 1. Optimization History - Evolución del mejor valor objetivo
+    logger.info("Generando Optimization History Plot...")
+    try:
+        fig = plot_optimization_history(study)
+        fig.figure.savefig(f"{output_dir}/optimization_history.png", dpi=150, bbox_inches='tight')
+        plt.close()
+        logger.info(f"Optimization History guardado en: {output_dir}/optimization_history.png")
+    except Exception as e:
+        logger.warning(f"No se pudo generar Optimization History: {e}")
+    
+    # 2. Timeline Plot - Visualiza trials con tiempo de ejecución
+    logger.info("Generando Timeline Plot...")
+    try:
+        fig = plot_timeline(study)
+        fig.figure.savefig(f"{output_dir}/timeline.png", dpi=150, bbox_inches='tight')
+        plt.close()
+        logger.info(f"Timeline Plot guardado en: {output_dir}/timeline.png")
+    except Exception as e:
+        logger.warning(f"No se pudo generar Timeline Plot: {e}")
+    
+    # 3. Parameter Importances - Importancia de hiperparámetros
+    logger.info("Generando Parameter Importances Plot...")
+    try:
+        fig = plot_param_importances(study)
+        fig.figure.savefig(f"{output_dir}/param_importances.png", dpi=150, bbox_inches='tight')
+        plt.close()
+        logger.info(f"Parameter Importances guardado en: {output_dir}/param_importances.png")
+    except Exception as e:
+        logger.warning(f"No se pudo generar Parameter Importances: {e}")
+    
+    # 4. Pareto Front - Solo si es multi-objetivo (si no lo es, se omite)
+    logger.info("Generando Pareto Front Plot...")
+    try:
+        # Verificar si el estudio es multi-objetivo
+        if len(study.directions) > 1:
+            fig = plot_pareto_front(study)
+            fig.figure.savefig(f"{output_dir}/pareto_front.png", dpi=150, bbox_inches='tight')
+            plt.close()
+            logger.info(f"Pareto Front guardado en: {output_dir}/pareto_front.png")
+        else:
+            logger.info("Pareto Front no aplicable (estudio de objetivo único)")
+    except Exception as e:
+        logger.warning(f"No se pudo generar Pareto Front: {e}")
+    
+    # 5. Resumen estadístico manual con matplotlib
+    logger.info("Generando resumen estadístico...")
+    try:
+        fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+        fig.suptitle('Resumen del Estudio Optuna', fontsize=16, fontweight='bold')
+        
+        # Subplot 1: Distribución de valores objetivo
+        trials_values = [t.value for t in study.trials if t.value is not None]
+        axes[0, 0].hist(trials_values, bins=20, alpha=0.7, color='blue', edgecolor='black')
+        axes[0, 0].axvline(study.best_value, color='red', linestyle='--', linewidth=2, label=f'Best: {study.best_value:.4f}')
+        axes[0, 0].set_title('Distribución de Valores Objetivo')
+        axes[0, 0].set_xlabel('Valor Objetivo (Loss)')
+        axes[0, 0].set_ylabel('Frecuencia')
+        axes[0, 0].legend()
+        axes[0, 0].grid(True, alpha=0.3)
+        
+        # Subplot 2: Progreso de trials
+        trial_numbers = [t.number for t in study.trials if t.value is not None]
+        trial_values = [t.value for t in study.trials if t.value is not None]
+        axes[0, 1].plot(trial_numbers, trial_values, 'o-', alpha=0.6, label='Trials')
+        axes[0, 1].axhline(study.best_value, color='red', linestyle='--', linewidth=2, label=f'Best: {study.best_value:.4f}')
+        axes[0, 1].set_title('Evolución de Trials')
+        axes[0, 1].set_xlabel('Trial Number')
+        axes[0, 1].set_ylabel('Valor Objetivo')
+        axes[0, 1].legend()
+        axes[0, 1].grid(True, alpha=0.3)
+        
+        # Subplot 3: Estado de trials
+        trial_states = {}
+        for t in study.trials:
+            state = t.state.name
+            trial_states[state] = trial_states.get(state, 0) + 1
+        
+        axes[1, 0].bar(trial_states.keys(), trial_states.values(), alpha=0.7, color=['green', 'red', 'orange', 'gray'])
+        axes[1, 0].set_title('Estado de Trials')
+        axes[1, 0].set_xlabel('Estado')
+        axes[1, 0].set_ylabel('Cantidad')
+        axes[1, 0].grid(True, alpha=0.3, axis='y')
+        
+        # Subplot 4: Información del mejor trial
+        axes[1, 1].axis('off')
+        best_info = f"""
+        MEJOR TRIAL
+        {'='*40}
+        Trial Number: {study.best_trial.number}
+        Valor Objetivo: {study.best_value:.6f}
+        
+        Mejores Hiperparámetros:
+        {'-'*40}
+        """
+        for param, value in study.best_params.items():
+            best_info += f"\n{param}: {value}"
+        
+        axes[1, 1].text(0.1, 0.5, best_info, fontsize=10, verticalalignment='center', 
+                       family='monospace', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+        
+        plt.tight_layout()
+        plt.savefig(f"{output_dir}/study_summary.png", dpi=150, bbox_inches='tight')
+        plt.close()
+        logger.info(f"Resumen del estudio guardado en: {output_dir}/study_summary.png")
+    except Exception as e:
+        logger.warning(f"No se pudo generar resumen estadístico: {e}")
+    
+    logger.info(f"Todas las gráficas de Optuna guardadas en: {output_dir}/")
+
+
+def plot_predictions_vs_actual(y_true: np.ndarray, y_pred: np.ndarray, 
+                                output_path: str = "reports/figures/predicciones/lstm_pred_vs_actual.png",
+                                title: str = "Gráfico de Predicción vs Valores Esperados"):
+    """
+    Genera un gráfico de dispersión de predicciones vs valores reales.
+    
+    Args:
+        y_true: Valores reales
+        y_pred: Valores predichos
+        output_path: Ruta donde guardar la figura
+        title: Título del gráfico
+    """
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    
+    plt.figure(figsize=(10, 10))
+    
+    # Scatter plot
+    plt.scatter(y_true, y_pred, alpha=0.6, s=30, color='blue', label='Predicciones')
+    
+    # Línea ideal (y = x)
+    min_val = min(y_true.min(), y_pred.min())
+    max_val = max(y_true.max(), y_pred.max())
+    plt.plot([min_val, max_val], [min_val, max_val], 'k--', linewidth=2, label='Ideal')
+    
+    # Configuración
+    plt.xlabel('Valores Esperados', fontsize=12)
+    plt.ylabel('Valores Predichos', fontsize=12)
+    plt.title(title, fontsize=14, fontweight='bold')
+    plt.legend(loc='upper left', fontsize=10)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    
+    # Guardar
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.close()
+    
+    logger.info(f"Gráfico de predicción vs valores esperados guardado en: {output_path}")
 
 def main(stage: str):
    
@@ -999,7 +1391,7 @@ def main(stage: str):
        df_train = separar_datos_prediccion(df, mes_prediccion=6, ruta_salida="data/predict_data/predict.xlsx")
        df_train_lstm = separar_datos_prediccion_lstm(df, mes_prediccion=6, ruta_salida=ruta_datos_lstm)
        logger.info("Separación completada. No se realizará entrenamiento.")
-        
+       
        logger.info("Generando columnas de estacionalidad.")
        df_train = columnas_estacionalidad(df_train)
        df_train_lstm = columnas_estacionalidad(df_train_lstm)
@@ -1007,8 +1399,15 @@ def main(stage: str):
        logger.info("Dividiendo los datos en conjuntos de entrenamiento y prueba.")
        x_train, x_test, y_train, y_test = dividir_train_test(df_train, objective_col="temperature_2m_target")
        x_train2, y_train2, x_val2, y_val2, x_test2, y_test2 = dividir_train_test_lstm(df_train_lstm, objective_col="temperature_2m_target")
-            
-       return x_train, x_test, y_train, y_test, x_train2, y_train2, x_val2, y_val2, x_test2, y_test2
+
+       # Guardar df_train_lstm como joblib para uso posterior
+       import joblib
+       from pathlib import Path
+       Path("models").mkdir(parents=True, exist_ok=True)
+       joblib.dump(df_train_lstm, "models/df_train_lstm.joblib")
+       logger.info("df_train_lstm guardado en: models/df_train_lstm.joblib")
+
+       return x_train, x_test, y_train, y_test, x_train2, y_train2, x_val2, y_val2, x_test2, y_test2, df_train_lstm
    
    
    
@@ -1139,13 +1538,21 @@ def main(stage: str):
            logger.error("Para usar LSTM necesitas instalar TensorFlow: pip install tensorflow")
            return
        
-       # Separar datos específicamente para LSTM
-       logger.info("Separando datos de junio para predicción...")
-       df_train = separar_datos_prediccion(df, mes_prediccion=6, ruta_salida="data/predict_data/predict.xlsx")
+       # Verificar que df_train_lstm fue preparado en stage "separar_datos"
+       import joblib
+       try:
+           logger.info("Cargando datos preparados para LSTM desde models/df_train_lstm.joblib ...")
+           df_train_lstm = joblib.load("models/df_train_lstm.joblib")
+           if df_train_lstm.empty or len(df_train_lstm) == 0:
+               raise ValueError("El DataFrame df_train_lstm (joblib) está vacío")
+           logger.info(f"Datos LSTM cargados desde joblib: {len(df_train_lstm)} registros")
+       except (FileNotFoundError, ValueError) as e:
+           logger.error(f"Error: {e}")
+           logger.error("df_train_lstm está vacío o no fue encontrado en joblib.")
+           logger.error("Debes ejecutar primero el stage 'separar_datos' para preparar los datos:")
+           logger.error("  python src/train.py --stage separar_datos")
+           return
        
-       # Generar columnas de estacionalidad
-       logger.info("Generando columnas de estacionalidad.")
-       df_train_lstm = columnas_estacionalidad(df_train)
        
        # División específica para LSTM (train/val/test)
        logger.info("Dividiendo los datos para LSTM (train/val/test).")
@@ -1174,19 +1581,17 @@ def main(stage: str):
        logger.info("Escalando datos para LSTM...")
        x_train_scaled, x_val_scaled, x_test_scaled, scaler = scale_lstm(x_train_lstm, x_val_lstm, x_test_lstm)
        
-       # Entrenamiento del modelo LSTM
-       logger.info("Entrenando modelo LSTM...")
-       model_lstm, history = train_lstm(
+       # Entrenamiento del modelo LSTM con Optuna
+       logger.info("Entrenando modelo LSTM con optimización de hiperparámetros...")
+       model_lstm, history, study = train_lstm(
            x_train_scaled, y_train_lstm,
            x_val_scaled, y_val_lstm,
-           units=64,
-           dropout=0.2,
-           lr=1e-3,
-           batch_size=32,
+           n_trials=30,  # Número de trials para Optuna
            epochs=500,
            patience=20,
            verbose=1,
-           output_path="models/lstm_final.h5"
+           output_path="models/lstm_final.h5",
+           optuna_db="sqlite:///models/optuna_lstm.db"
        )
        
        # Evaluación del modelo
@@ -1197,6 +1602,20 @@ def main(stage: str):
        logger.info("Generando curvas de aprendizaje...")
        learning_curves_path = "reports/figures/curvas aprendizaje/lstm_sol/lstm_learning_curves.png"
        final_training_metrics = plot_lstm_learning_curves(history, learning_curves_path)
+       
+       # Generar gráficos de Optuna
+       logger.info("Generando gráficos de análisis de Optuna...")
+       plot_optuna_study(study, output_dir="reports/figures/optuna")
+       
+       # Generar gráfico de predicciones vs valores esperados
+       logger.info("Generando gráfico de predicciones vs valores esperados...")
+       y_pred_test = test_metrics['test_predictions']
+       plot_predictions_vs_actual(
+           y_test_lstm, 
+           y_pred_test,
+           output_path="reports/figures/predicciones/lstm_pred_vs_actual.png",
+           title="LSTM: Predicción vs Valores Esperados"
+       )
        
        logger.info("=" * 50)
        logger.info("RESULTADOS FINALES LSTM")
@@ -1210,14 +1629,18 @@ def main(stage: str):
        metadatos_lstm = {
            "nombre_modelo": "LSTM",
            "fecha_entrenamiento": datetime.now().isoformat(),
-           "version": "1.0.0",
+           "version": "2.0.0",  # Actualizada a 2.0.0 con Optuna
            "target": "temperature_2m_target",
+           "optimizacion": {
+               "metodo": "Optuna",
+               "n_trials": len(study.trials) if study else 0,
+               "best_trial": study.best_trial.number if study else None,
+               "best_value": float(study.best_value) if study else None
+           },
            "arquitectura": {
                "window_size": 48,
                "horizon": 3,
-               "units": 64,
-               "dropout": 0.2,
-               "learning_rate": 1e-3
+               "best_params": study.best_params if study else {}
            },
            "metricas": {
                "test_rmse": float(test_metrics['test_rmse']),

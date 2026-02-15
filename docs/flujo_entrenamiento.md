@@ -58,7 +58,42 @@ Este documento describe paso a paso el flujo de entrenamiento implementado en `s
 
 ---
 
-## 5. Resumen Visual (Mermaid)
+## 5. Entrenamiento de Modelo LSTM con Optuna
+
+1. **Preparación de datos para LSTM:**
+   - División train/val/test: 68% entrenamiento, 12% validación, 20% test usando `dividir_train_test_lstm()`.
+   - Creación de ventanas deslizantes con `crear_ventanas()` (window_size=48 horas, horizon=3 horas).
+   - Escalado de features con `StandardScaler` usando `escalar_datos_lstm()`.
+
+2. **Optimización de hiperparámetros con Optuna:**
+   - Se usa la función `train_lstm()` que implementa optimización bayesiana con Optuna.
+   - Arquitectura: Conv1D + LSTM doble capa + Dense.
+   - Espacio de búsqueda incluye: filters Conv1D, kernel_size, unidades LSTM, dropout, learning rate, batch_size, padding causal, y optimizador.
+   - 30 trials con pruning inteligente (MedianPruner) para descartar combinaciones no prometedoras.
+   - Callbacks: EarlyStopping (patience=40) y TFKerasPruningCallback.
+
+3. **Resultados de optimización:**
+   - Se guarda el mejor modelo encontrado en `models/lstm_final.h5`.
+   - Hiperparámetros óptimos guardados en `models/lstm_final_best_params.json`.
+   - Resumen completo del estudio en `models/lstm_final_optuna_study.json`.
+   - Base de datos SQLite con historial: `models/optuna_lstm.db`.
+
+4. **Visualizaciones de Optuna:**
+   - Gráficos estáticos generados: optimization history, timeline, parameter importances.
+   - Guardados en `reports/figures/optuna/`.
+
+5. **Curvas de aprendizaje:**
+   - Se genera curva de loss (train vs validation) para el modelo final.
+   - Guardada en `reports/figures/curvas aprendizaje/lstm_sol/lstm_learning_curves.png`.
+
+6. **Evaluación en test:**
+   - Se evalúa el mejor modelo en el conjunto de test.
+   - Métricas: RMSE, MAE, MAPE.
+   - Gráfico de predicciones vs valores reales.
+
+---
+
+## 6. Resumen Visual (Mermaid)
 
 ```mermaid
 graph TD
@@ -66,13 +101,18 @@ graph TD
     B --> C[División train/test]
     C --> D1[Modelos Lineales]
     C --> D2[XGBoost]
+    C --> D3[LSTM]
     D1 --> E1[GridSearchCV + TSCV]
     D2 --> E2[RandomizedSearchCV + TSCV]
+    D3 --> E3[Optuna Bayesian Optimization]
     E1 --> F1[Curva de aprendizaje]
     E2 --> F2[Curva n_estimators]
+    E3 --> F3[Curvas de entrenamiento LSTM]
     F1 --> G1[Guardar modelo y metadatos]
     F2 --> G2[Guardar modelo y metadatos]
+    F3 --> G3[Guardar modelo, scaler y metadatos]
     G2 --> H[Interpretabilidad SHAP]
+    G3 --> I[Visualizaciones Optuna]
 ```
 
 ---
