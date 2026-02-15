@@ -270,4 +270,17 @@ Comparación entre predicciones del modelo LSTM y valores reales en el conjunto 
 
 ---
 
+## 📊 Comparación Final de Modelos
+
+| Modelo      | RMSE   | MAE   | R²   | Validation Loss |
+|-------------|--------|-------|------|-----------------|
+| Lasso       | 1.45°C | 1.13°C | 0.82 | -               |
+| **Ridge**   | 1.51°C | 1.19°C | 0.84 | -               |
+| Elastic Net | 1.41°C | 1.10°C | 0.83 | -               |
+| **XGBoost** | 1.00°C | 0.76°C | 0.86 | -               |
+| **LSTM**    | 1.29°C | 1.03°C |  -   | 1.44°C          |
+
+
+---
+
 [← Volver al README principal](../README.md)
