@@ -912,11 +912,11 @@ def build_model(hparams: dict, input_shape: tuple) -> tuple:
     Construye y compila un modelo LSTM con Conv1D y los hiperparámetros dados.
     
     Arquitectura:
-        Input -> Conv1D -> LSTM #1 -> LSTM #2 -> Dense (output)
+        Input -> Conv1D -> LSTM #1 -> LSTM #2 -> LSTM #3 -> Dense (output)
     
     Args:
         hparams: Diccionario con hiperparámetros (filters, kernel_size, lstm1_units, 
-                 lstm2_units, dropout, recurrent_dropout, learning_rate, batch_size, etc.)
+                 lstm2_units, lstm3_units, dropout, recurrent_dropout, learning_rate, batch_size, etc.)
         input_shape: Tupla (window_size, n_features) para la forma de entrada
     
     Returns:
@@ -937,6 +937,7 @@ def build_model(hparams: dict, input_shape: tuple) -> tuple:
     kernel_size = hparams.get('kernel_size', 3)
     lstm1_units = hparams.get('lstm1_units', 64)
     lstm2_units = hparams.get('lstm2_units', 32)
+    lstm3_units = hparams.get('lstm3_units', 16)  # Nueva capa LSTM
     dropout = hparams.get('dropout', 0.2)
     recurrent_dropout = hparams.get('recurrent_dropout', 0.1)
     learning_rate = hparams.get('learning_rate', 1e-3)
@@ -965,9 +966,17 @@ def build_model(hparams: dict, input_shape: tuple) -> tuple:
         recurrent_dropout=recurrent_dropout
     ))
     
-    # LSTM #2 (return_sequences=False para salida final)
+    # LSTM #2 (return_sequences=True para pasar a LSTM #3)
     modelo.add(layers.LSTM(
         units=lstm2_units,
+        return_sequences=True,
+        dropout=dropout,
+        recurrent_dropout=recurrent_dropout
+    ))
+    
+    # LSTM #3 (return_sequences=False para salida final)
+    modelo.add(layers.LSTM(
+        units=lstm3_units,
         return_sequences=False,
         dropout=dropout
     ))
@@ -1170,6 +1179,275 @@ def train_lstm(x_train: np.ndarray, y_train: np.ndarray, x_val: np.ndarray, y_va
         logger.warning("No se pudo entrenar ningún modelo exitosamente")
     
     return best_model_info['model'], best_model_info['history'], study
+
+
+def train_lstm_multiobj(x_train: np.ndarray, y_train: np.ndarray, x_val: np.ndarray, y_val: np.ndarray,
+                        n_trials: int, epochs: int, patience: int = 40, 
+                        verbose: int = 1, output_path: str = "models/lstm_final.h5",
+                        optuna_db: str = "sqlite:///models/optuna_lstm_multiobj.db",
+                        use_mae_loss: bool = True):
+    """
+    Entrena LSTM con optimización MULTIOBJETIVO (MAE + RMSE).
+    
+    Args:
+        x_train: Datos de entrenamiento normalizados (samples, window_size, features)
+        y_train: Target de entrenamiento NORMALIZADO
+        x_val: Datos de validación normalizados
+        y_val: Target de validación NORMALIZADO
+        n_trials: Número de trials para Optuna
+        epochs: Épocas máximas por trial
+        patience: Paciencia para early stopping
+        verbose: Nivel de verbosidad
+        output_path: Ruta para guardar el mejor modelo
+        optuna_db: Ruta de la base de datos de Optuna
+        use_mae_loss: Si True usa loss="mae", si False usa Huber loss
+    
+    Returns:
+        tuple: (mejor_modelo, mejor_history, study, pareto_trials)
+    
+    Nota: 
+    - Las métricas MAE y RMSE se calculan en escala REAL (°C) 
+      desnormalizando internamente las predicciones.
+    - Pruning no está disponible para optimización multiobjetivo en Optuna.
+      Se usa solo EarlyStopping para evitar overfitting.
+    """
+    try:
+        import tensorflow as tf
+        from tensorflow.keras import callbacks
+        import optuna
+    except ImportError as e:
+        logger.error(f"Error al importar dependencias: {e}")
+        logger.error("Instala las dependencias: pip install tensorflow optuna")
+        return None, None, None, []
+    
+    input_shape = (x_train.shape[1], x_train.shape[2])
+    
+    # Calcular estadísticas para desnormalización (y_train está normalizado)
+    mean_y = np.mean(y_train)
+    std_y = np.std(y_train)
+    logger.info(f"Estadísticas y: mean={mean_y:.4f}, std={std_y:.4f}")
+    
+    # Variable para guardar el mejor modelo (por MAE)
+    best_model_info = {'model': None, 'history': None, 'mae': float('inf'), 'rmse': float('inf')}
+    
+    def objective(trial):
+        """Función objetivo multiobjetivo: minimizar (MAE, RMSE) en validación"""
+        tf.keras.backend.clear_session()
+        
+        # Hiperparámetros expandidos para competir con XGBoost
+        hparams = {
+            'filters': trial.suggest_int('filters', 32, 128, step=16),  # Más filtros
+            'kernel_size': trial.suggest_int('kernel_size', 2, 7),  # Kernel más grande
+            'lstm1_units': trial.suggest_int('lstm1_units', 64, 256, step=32),  # Más capacidad
+            'lstm2_units': trial.suggest_int('lstm2_units', 32, 128, step=16),  # Más capacidad
+            'lstm3_units': trial.suggest_int('lstm3_units', 16, 64, step=16),  # Tercera capa LSTM
+            'dropout': trial.suggest_float('dropout', 0.1, 0.5),  # Mayor regularización
+            'recurrent_dropout': trial.suggest_float('recurrent_dropout', 0.0, 0.3),
+            'learning_rate': trial.suggest_float('learning_rate', 5e-5, 5e-3, log=True),  # LR más bajo
+            'batch_size': trial.suggest_categorical('batch_size', [16, 32, 64, 128]),  # Batch más grande
+            'use_causal_padding': trial.suggest_categorical('use_causal_padding', [True, False]),
+            'optimizer': trial.suggest_categorical('optimizer', ['adam', 'adamw', 'rmsprop'])
+        }
+        
+        # Construir modelo
+        model, batch_size = build_model(hparams, input_shape)
+        if model is None:
+            return float('inf'), float('inf')
+        
+        # Re-compilar con loss alineada a MAE
+        if use_mae_loss:
+            loss_fn = "mae"
+        else:
+            loss_fn = tf.keras.losses.Huber(delta=1.0)  # Alternativa robusta
+        
+        # Obtener optimizer ya configurado
+        opt = model.optimizer
+        
+        model.compile(
+            optimizer=opt,
+            loss=loss_fn,
+            metrics=[
+                tf.keras.metrics.RootMeanSquaredError(name="rmse"),
+                tf.keras.metrics.MeanAbsoluteError(name="mae")
+            ]
+        )
+        
+        # Callbacks
+        # Nota: Pruning no está soportado en optimización multiobjetivo
+        callbacks_list = [
+            callbacks.EarlyStopping(
+                monitor="val_mae",
+                patience=patience,
+                restore_best_weights=True,
+                verbose=0
+            )
+        ]
+        
+        # Entrenar
+        try:
+            history = model.fit(
+                x_train, y_train,
+                validation_data=(x_val, y_val),
+                epochs=epochs,
+                batch_size=batch_size,
+                shuffle=False,
+                callbacks=callbacks_list,
+                verbose=0 if verbose == 0 else 1
+            )
+        except Exception as e:
+            logger.error(f"Error en trial {trial.number}: {e}")
+            return float('inf'), float('inf')
+        
+        # Evaluar en validación
+        y_pred_norm = model.predict(x_val, verbose=0).reshape(-1)
+        
+        # Desnormalizar predicciones y targets a escala real (°C)
+        y_pred_real = y_pred_norm * std_y + mean_y
+        y_val_real = y_val * std_y + mean_y
+        
+        # Métricas finales en escala real (°C)
+        val_mae = float(np.mean(np.abs(y_val_real - y_pred_real)))
+        val_rmse = float(np.sqrt(np.mean((y_val_real - y_pred_real) ** 2)))
+        
+        # Guardar mejor modelo (por MAE)
+        if val_mae < best_model_info['mae']:
+            best_model_info['model'] = model
+            best_model_info['history'] = history
+            best_model_info['mae'] = val_mae
+            best_model_info['rmse'] = val_rmse
+            logger.info(f"Nuevo mejor modelo: Trial {trial.number}, MAE={val_mae:.4f}, RMSE={val_rmse:.4f}")
+        
+        # Logging
+        train_mae = history.history['mae'][-1] if 'mae' in history.history else 0.0
+        gap = abs(train_mae - val_mae)
+        logger.info(f"Trial {trial.number}: MAE={val_mae:.4f}, RMSE={val_rmse:.4f}, gap={gap:.4f}")
+        
+        return val_mae, val_rmse  # Tupla multiobjetivo
+    
+    # Crear estudio multiobjetivo
+    logger.info("="*70)
+    logger.info("OPTIMIZACIÓN MULTIOBJETIVO CON OPTUNA (MAE + RMSE)")
+    logger.info("="*70)
+    
+    study_name = f"lstm_multiobj_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    study = optuna.create_study(
+        directions=["minimize", "minimize"],  # Minimizar MAE y RMSE
+        # Nota: Pruner no se utiliza en multi-objetivo (no soportado por Optuna)
+        study_name=study_name,
+        storage=optuna_db,
+        load_if_exists=False
+    )
+    
+    study.optimize(objective, n_trials=n_trials, show_progress_bar=True)
+    
+    # Resultados
+    logger.info("="*70)
+    logger.info("OPTIMIZACIÓN COMPLETADA")
+    logger.info("="*70)
+    
+    # Pareto Front
+    pareto_trials = study.best_trials
+    logger.info(f"Pareto Front contiene {len(pareto_trials)} soluciones óptimas:")
+    for t in pareto_trials:
+        mae, rmse = t.values
+        logger.info(f"  Trial {t.number}: MAE={mae:.4f}, RMSE={rmse:.4f}")
+    
+    # Seleccionar mejor por MAE (competir con XGBoost)
+    best_trial = min(pareto_trials, key=lambda t: t.values[0])
+    logger.info(f"\nMejor por MAE: Trial {best_trial.number}")
+    logger.info(f"  MAE: {best_trial.values[0]:.4f}")
+    logger.info(f"  RMSE: {best_trial.values[1]:.4f}")
+    logger.info("Mejores hiperparámetros:")
+    for key, value in best_trial.params.items():
+        logger.info(f"  {key}: {value}")
+    
+    # Guardar modelo
+    if best_model_info['model'] is not None:
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        best_model_info['model'].save(output_path)
+        logger.info(f"Mejor modelo guardado en: {output_path}")
+        
+        # Guardar metadatos
+        best_params_path = output_path.replace('.h5', '_best_params.json').replace('.keras', '_best_params.json')
+        with open(best_params_path, 'w') as f:
+            json.dump({
+                'optimization_type': 'multiobjetivo',
+                'objectives': ['MAE', 'RMSE'],
+                'best_trial': best_trial.number,
+                'best_mae': best_trial.values[0],
+                'best_rmse': best_trial.values[1],
+                'best_params': best_trial.params,
+                'n_pareto_solutions': len(pareto_trials),
+                'n_trials': len(study.trials),
+                'timestamp': datetime.now().isoformat()
+            }, f, indent=4)
+        logger.info(f"Metadatos guardados en: {best_params_path}")
+        
+        # Guardar Pareto Front
+        pareto_path = output_path.replace('.h5', '_pareto.json').replace('.keras', '_pareto.json')
+        pareto_data = {
+            'pareto_trials': [
+                {
+                    'trial_number': t.number,
+                    'mae': t.values[0],
+                    'rmse': t.values[1],
+                    'params': t.params
+                }
+                for t in pareto_trials
+            ]
+        }
+        with open(pareto_path, 'w') as f:
+            json.dump(pareto_data, f, indent=4)
+        logger.info(f"Pareto Front guardado en: {pareto_path}")
+        
+        # Visualizar Pareto Front
+        _plot_pareto_front(study, output_dir="reports/figures/optuna")
+    else:
+        logger.warning("No se entrenó ningún modelo exitosamente")
+    
+    return best_model_info['model'], best_model_info['history'], study, pareto_trials
+
+
+def _plot_pareto_front(study, output_dir: str = "reports/figures/optuna"):
+    """Visualiza el Pareto Front de un estudio multiobjetivo"""
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    
+    # Extraer datos
+    all_trials = [t for t in study.trials if t.values[0] != float('inf')]
+    pareto_trials = study.best_trials
+    
+    if len(all_trials) == 0:
+        logger.warning("No hay trials válidos para graficar Pareto Front")
+        return
+    
+    all_mae = [t.values[0] for t in all_trials]
+    all_rmse = [t.values[1] for t in all_trials]
+    pareto_mae = [t.values[0] for t in pareto_trials]
+    pareto_rmse = [t.values[1] for t in pareto_trials]
+    
+    # Mejor por MAE
+    best_mae_trial = min(pareto_trials, key=lambda t: t.values[0])
+    
+    # Graficar
+    plt.figure(figsize=(10, 6))
+    plt.scatter(all_mae, all_rmse, alpha=0.5, s=50, label='Todos los trials')
+    plt.scatter(pareto_mae, pareto_rmse, color='red', s=100, marker='*', 
+                label='Pareto Front', zorder=5)
+    plt.scatter([best_mae_trial.values[0]], [best_mae_trial.values[1]], 
+                color='green', s=200, marker='X', label=f'Mejor MAE (Trial {best_mae_trial.number})', zorder=6)
+    
+    plt.xlabel('MAE (°C)', fontsize=12)
+    plt.ylabel('RMSE (°C)', fontsize=12)
+    plt.title('Pareto Front: MAE vs RMSE', fontsize=14, fontweight='bold')
+    plt.legend(fontsize=10)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    
+    output_path = f"{output_dir}/pareto_front_multiobj.png"
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.close()
+    
+    logger.info(f"Pareto Front visualizado en: {output_path}")
 
 
 def evaluate(model, x_test: np.ndarray, y_test: np.ndarray, *, prefix: str = "test") -> Dict[str, float]:
@@ -1678,9 +1956,160 @@ def main(stage: str):
        
        logger.info("Entrenamiento LSTM completado exitosamente.")
    
+   elif stage == "lstm_multiobj":
+       logger.info("Iniciando entrenamiento LSTM MULTIOBJETIVO (MAE + RMSE)...")
+       
+       # Importar TensorFlow
+       try:
+           import tensorflow as tf
+           from tensorflow.keras import layers, models, callbacks, optimizers
+       except ImportError as e:
+           logger.error(f"Error al importar TensorFlow: {e}")
+           logger.error("Instala TensorFlow: pip install tensorflow")
+           return
+       
+       # Cargar datos preparados
+       import joblib
+       try:
+           logger.info("Cargando datos preparados para LSTM...")
+           df_train_lstm = joblib.load("models/df_train_lstm.joblib")
+           if df_train_lstm.empty:
+               raise ValueError("df_train_lstm vacío")
+           logger.info(f"Datos cargados: {len(df_train_lstm)} registros")
+       except (FileNotFoundError, ValueError) as e:
+           logger.error(f"Error: {e}")
+           logger.error("Ejecuta primero: python src/train.py --stage separar_datos")
+           return
+       
+       # División train/val/test
+       logger.info("Dividiendo datos (train/val/test)...")
+       x_train_df, y_train_df, x_val_df, y_val_df, x_test_df, y_test_df = dividir_train_test_lstm(
+           df_train_lstm, objective_col="temperature_2m_target"
+       )
+       
+       # Crear ventanas - Aumentar a 72h (3 días) para capturar más patrones
+       logger.info("Creando ventanas deslizantes...")
+       features_lstm = [col for col in x_train_df.columns if col != "time"]
+       
+       df_full_train = pd.concat([x_train_df.reset_index(drop=True), y_train_df.reset_index(drop=True)], axis=1)
+       df_full_val = pd.concat([x_val_df.reset_index(drop=True), y_val_df.reset_index(drop=True)], axis=1)
+       df_full_test = pd.concat([x_test_df.reset_index(drop=True), y_test_df.reset_index(drop=True)], axis=1)
+       
+       x_train_lstm, y_train_lstm, _ = lstm_window(df_full_train, features_lstm, "temperature_2m_target", window_size=72, horizon=3)
+       x_val_lstm, y_val_lstm, _ = lstm_window(df_full_val, features_lstm, "temperature_2m_target", window_size=72, horizon=3)
+       x_test_lstm, y_test_lstm, _ = lstm_window(df_full_test, features_lstm, "temperature_2m_target", window_size=72, horizon=3)
+       
+       logger.info(f"Train: x={x_train_lstm.shape}, y={y_train_lstm.shape}")
+       logger.info(f"Val: x={x_val_lstm.shape}, y={y_val_lstm.shape}")
+       logger.info(f"Test: x={x_test_lstm.shape}, y={y_test_lstm.shape}")
+       
+       # Escalado
+       logger.info("Escalando datos...")
+       x_train_scaled, x_val_scaled, x_test_scaled, scaler = scale_lstm(x_train_lstm, x_val_lstm, x_test_lstm)
+       
+       # Entrenamiento multiobjetivo
+       logger.info("Entrenando con optimización multiobjetivo (MAE + RMSE)...")
+       model_lstm, history, study, pareto_trials = train_lstm_multiobj(
+           x_train_scaled, y_train_lstm,
+           x_val_scaled, y_val_lstm,
+           n_trials=100,  # Máxima exploración
+           epochs=500,
+           patience=40,
+           verbose=1,
+           output_path="models/lstm_multiobj_final.h5",
+           optuna_db="sqlite:///models/optuna_lstm_multiobj.db",
+           use_mae_loss=False  # Usar Huber loss (más robusto)
+       )
+       
+       # Evaluación en test
+       logger.info("Evaluando modelo en test...")
+       test_metrics = evaluate(model_lstm, x_test_scaled, y_test_lstm, prefix="test")
+       
+       # Curvas de aprendizaje
+       logger.info("Generando curvas de aprendizaje...")
+       learning_curves_path = "reports/figures/curvas aprendizaje/lstm_multiobj/lstm_learning_curves.png"
+       final_training_metrics = plot_lstm_learning_curves(history, learning_curves_path)
+       
+       # Gráficos Optuna
+       logger.info("Generando gráficos de Optuna...")
+       plot_optuna_study(study, output_dir="reports/figures/optuna_multiobj")
+       
+       # Predicciones vs actual
+       logger.info("Generando gráfico de predicciones...")
+       y_pred_test = test_metrics['test_predictions']
+       plot_predictions_vs_actual(
+           y_test_lstm,
+           y_pred_test,
+           output_path="reports/figures/predicciones/lstm_multiobj_pred_vs_actual.png",
+           title="LSTM Multiobjetivo: Predicción vs Valores Esperados"
+       )
+       
+       # Resultados finales
+       logger.info("="*50)
+       logger.info("RESULTADOS FINALES LSTM MULTIOBJETIVO")
+       logger.info("="*50)
+       logger.info(f"RMSE en test: {test_metrics['test_rmse']:.4f}")
+       logger.info(f"MAE en test: {test_metrics['test_mae']:.4f}")
+       logger.info(f"Soluciones Pareto: {len(pareto_trials)}")
+       logger.info(f"Epochs entrenadas: {final_training_metrics['epochs_trained']}")
+       
+       # Guardar metadatos
+       best_trial = min(pareto_trials, key=lambda t: t.values[0])  # Mejor por MAE
+       metadatos_lstm = {
+           "nombre_modelo": "LSTM Multiobjetivo",
+           "fecha_entrenamiento": datetime.now().isoformat(),
+           "version": "3.0.0",
+           "target": "temperature_2m_target",
+           "optimizacion": {
+               "metodo": "Optuna Multiobjetivo",
+               "objetivos": ["MAE", "RMSE"],
+               "n_trials": len(study.trials),
+               "n_pareto_solutions": len(pareto_trials),
+               "best_trial": best_trial.number,
+               "best_mae": float(best_trial.values[0]),
+               "best_rmse": float(best_trial.values[1])
+           },
+           "arquitectura": {
+               "window_size": 48,
+               "horizon": 3,
+               "loss_function": "mae",
+               "best_params": best_trial.params
+           },
+           "metricas": {
+               "test_rmse": float(test_metrics['test_rmse']),
+               "test_mae": float(test_metrics['test_mae']),
+               "final_train_rmse": float(final_training_metrics['final_train_rmse']),
+               "final_val_rmse": float(final_training_metrics['final_val_rmse']),
+               "final_train_mae": float(final_training_metrics['final_train_mae']),
+               "final_val_mae": float(final_training_metrics['final_val_mae']),
+               "best_val_loss": float(final_training_metrics['best_val_loss']),
+               "best_epoch": int(final_training_metrics['best_epoch']),
+               "epochs_trained": int(final_training_metrics['epochs_trained'])
+           },
+           "features": features_lstm,
+           "n_features": len(features_lstm),
+           "n_muestras_train": len(y_train_lstm),
+           "n_muestras_val": len(y_val_lstm),
+           "n_muestras_test": len(y_test_lstm),
+           "ruta_modelo": "models/lstm_multiobj_final.h5",
+           "ruta_curvas_aprendizaje": learning_curves_path,
+           "scaler_info": {
+               "tipo": "StandardScaler",
+               "parametros": {
+                   "mean": scaler.mean_.tolist(),
+                   "scale": scaler.scale_.tolist()
+               }
+           }
+       }
+       
+       guardar_metadatos(metadatos_lstm, "models/metadata/lstm_multiobj_metadatos.json")
+       joblib.dump(scaler, "models/lstm_multiobj_scaler.joblib")
+       logger.info("Scaler guardado en: models/lstm_multiobj_scaler.joblib")
+       logger.info("Entrenamiento LSTM multiobjetivo completado exitosamente.")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--stage", type=str, default="lstm",
-                        choices=["separar_datos", "lineales", "xgboost", "shap", "lstm"])
+    parser.add_argument("--stage", type=str, default="lstm_multiobj",
+                        choices=["separar_datos", "lineales", "xgboost", "shap", "lstm", "lstm_multiobj"])
     args = parser.parse_args()
     main(args.stage)

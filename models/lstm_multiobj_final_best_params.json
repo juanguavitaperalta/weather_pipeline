@@ -1,0 +1,25 @@
+{
+    "optimization_type": "multiobjetivo",
+    "objectives": [
+        "MAE",
+        "RMSE"
+    ],
+    "best_trial": 7,
+    "best_mae": 4.427610397338867,
+    "best_rmse": 5.865625858306885,
+    "best_params": {
+        "filters": 48,
+        "kernel_size": 4,
+        "lstm1_units": 64,
+        "lstm2_units": 16,
+        "dropout": 0.2398977141671162,
+        "recurrent_dropout": 0.10299202187418466,
+        "learning_rate": 0.00015620465483816932,
+        "batch_size": 32,
+        "use_causal_padding": false,
+        "optimizer": "adamw"
+    },
+    "n_pareto_solutions": 1,
+    "n_trials": 30,
+    "timestamp": "2026-02-15T15:16:48.850406"
+}

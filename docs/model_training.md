@@ -122,6 +122,8 @@ En este caso, las curvas de entrenamiento y validación convergen al valor de de
 | **Ridge**   | 1.38°C | 1.08°C | 0.84 |
 | Elastic Net | 1.41°C | 1.10°C | 0.83 |
 | **XGBoost** | 1.32°C | 1.01°C | 0.86 |
+| **LSTM**    | 1.29°C | 1.03°C |  -   | 1.44°C          |
+| **LSTM Multiobj** | 1.10°C | 0.85°C | 0.85 |
 
 **Modelo seleccionado:** XGBoost por su mejor rendimiento en RMSE y MAE.
 
@@ -279,6 +281,7 @@ Comparación entre predicciones del modelo LSTM y valores reales en el conjunto 
 | Elastic Net | 1.41°C | 1.10°C | 0.83 | -               |
 | **XGBoost** | 1.00°C | 0.76°C | 0.86 | -               |
 | **LSTM**    | 1.29°C | 1.03°C |  -   | 1.44°C          |
+| **LSTM Multiobj** | 1.10°C | 0.85°C | 0.85 | -               |
 
 
 ---

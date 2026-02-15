@@ -1,0 +1,21 @@
+{
+    "pareto_trials": [
+        {
+            "trial_number": 7,
+            "mae": 4.427610397338867,
+            "rmse": 5.865625858306885,
+            "params": {
+                "filters": 48,
+                "kernel_size": 4,
+                "lstm1_units": 64,
+                "lstm2_units": 16,
+                "dropout": 0.2398977141671162,
+                "recurrent_dropout": 0.10299202187418466,
+                "learning_rate": 0.00015620465483816932,
+                "batch_size": 32,
+                "use_causal_padding": false,
+                "optimizer": "adamw"
+            }
+        }
+    ]
+}
