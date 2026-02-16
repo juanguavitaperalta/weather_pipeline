@@ -4,15 +4,34 @@ import logging
 # Crear carpeta logs si no existe
 os.makedirs("logs", exist_ok=True)
 
+# Configurar handlers con flush automático
+file_handler = logging.FileHandler("logs/train.log", mode="a", encoding="utf-8")
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s:%(name)s:%(message)s"))
+
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s:%(name)s:%(message)s"))
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s:%(name)s:%(message)s",
-    handlers=[
-        logging.FileHandler("logs/train.log", mode="a", encoding="utf-8"),
-        logging.StreamHandler()
-    ]
+    handlers=[file_handler, console_handler]
 )
 logger = logging.getLogger(__name__)
+
+# Forzar flush automático en cada log
+class FlushFileHandler(logging.FileHandler):
+    def emit(self, record):
+        super().emit(record)
+        self.flush()
+
+# Reemplazar file_handler con versión con flush
+logger.handlers = [h for h in logger.handlers if not isinstance(h, logging.FileHandler)]
+flush_handler = FlushFileHandler("logs/train.log", mode="a", encoding="utf-8")
+flush_handler.setLevel(logging.INFO)
+flush_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s:%(name)s:%(message)s"))
+logger.addHandler(flush_handler)
+logger.addHandler(console_handler)
 
 # Workaround típico para conflicto OpenMP en Windows (MKL/oneDNN)
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
