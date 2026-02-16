@@ -1,5 +1,19 @@
-
 import os
+import logging
+
+# Crear carpeta logs si no existe
+os.makedirs("logs", exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s:%(name)s:%(message)s",
+    handlers=[
+        logging.FileHandler("logs/train.log", mode="a", encoding="utf-8"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
 # Workaround típico para conflicto OpenMP en Windows (MKL/oneDNN)
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
@@ -1072,14 +1086,14 @@ def train_lstm(x_train: np.ndarray, y_train: np.ndarray, x_val: np.ndarray, y_va
             return float('inf')
         
         # Callbacks
+        # Nota: Pruning no está soportado en optimización multiobjetivo
         callbacks_list = [
             callbacks.EarlyStopping(
-                monitor="val_loss", 
-                patience=patience, 
+                monitor="val_mae",
+                patience=patience,
                 restore_best_weights=True,
                 verbose=0
-            ),
-            TFKerasPruningCallback(trial, "val_loss")
+            )
         ]
         
         # Entrenar modelo
@@ -1272,6 +1286,14 @@ def train_lstm_multiobj(x_train: np.ndarray, y_train: np.ndarray, x_val: np.ndar
             ]
         )
         
+        # Callback para loguear por epoch
+        class LogEpochCallback(callbacks.Callback):
+            def on_epoch_end(self, epoch, logs=None):
+                logger.info(f"Trial {trial.number} - Epoch {epoch+1}: "
+                            f"loss={logs.get('loss'):.4f}, val_loss={logs.get('val_loss'):.4f}, "
+                            f"mae={logs.get('mae'):.4f}, val_mae={logs.get('val_mae'):.4f}, "
+                            f"rmse={logs.get('rmse'):.4f}, val_rmse={logs.get('val_rmse'):.4f}")
+        
         # Callbacks
         # Nota: Pruning no está soportado en optimización multiobjetivo
         callbacks_list = [
@@ -1280,7 +1302,8 @@ def train_lstm_multiobj(x_train: np.ndarray, y_train: np.ndarray, x_val: np.ndar
                 patience=patience,
                 restore_best_weights=True,
                 verbose=0
-            )
+            ),
+            LogEpochCallback()
         ]
         
         # Entrenar
