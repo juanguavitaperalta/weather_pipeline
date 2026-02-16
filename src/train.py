@@ -5,7 +5,7 @@ import logging
 os.makedirs("logs", exist_ok=True)
 
 # Configurar handlers con flush automático
-file_handler = logging.FileHandler("logs/train.log", mode="a", encoding="utf-8")
+file_handler = logging.FileHandler("logs/train.log", mode="w", encoding="utf-8")  # mode="w" borra archivo existente
 file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s:%(name)s:%(message)s"))
 
@@ -27,7 +27,7 @@ class FlushFileHandler(logging.FileHandler):
 
 # Reemplazar file_handler con versión con flush
 logger.handlers = [h for h in logger.handlers if not isinstance(h, logging.FileHandler)]
-flush_handler = FlushFileHandler("logs/train.log", mode="a", encoding="utf-8")
+flush_handler = FlushFileHandler("logs/train.log", mode="w", encoding="utf-8")  # mode="w" borra archivo existente
 flush_handler.setLevel(logging.INFO)
 flush_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s:%(name)s:%(message)s"))
 logger.addHandler(flush_handler)
@@ -1305,13 +1305,25 @@ def train_lstm_multiobj(x_train: np.ndarray, y_train: np.ndarray, x_val: np.ndar
             ]
         )
         
-        # Callback para loguear por epoch
+        # Callback para loguear cada X minutos
+        import time
         class LogEpochCallback(callbacks.Callback):
+            def __init__(self, log_interval_minutes=30):
+                super().__init__()
+                self.log_interval = log_interval_minutes * 60  # Convertir a segundos
+                self.last_log_time = time.time()
+            
             def on_epoch_end(self, epoch, logs=None):
-                logger.info(f"Trial {trial.number} - Epoch {epoch+1}: "
-                            f"loss={logs.get('loss'):.4f}, val_loss={logs.get('val_loss'):.4f}, "
-                            f"mae={logs.get('mae'):.4f}, val_mae={logs.get('val_mae'):.4f}, "
-                            f"rmse={logs.get('rmse'):.4f}, val_rmse={logs.get('val_rmse'):.4f}")
+                current_time = time.time()
+                elapsed = current_time - self.last_log_time
+                
+                # Loguear si han pasado los minutos configurados O es el último epoch
+                if elapsed >= self.log_interval or epoch == 0:
+                    logger.info(f"Trial {trial.number} - Epoch {epoch+1}: "
+                                f"loss={logs.get('loss'):.4f}, val_loss={logs.get('val_loss'):.4f}, "
+                                f"mae={logs.get('mae'):.4f}, val_mae={logs.get('val_mae'):.4f}, "
+                                f"rmse={logs.get('rmse'):.4f}, val_rmse={logs.get('val_rmse'):.4f}")
+                    self.last_log_time = current_time
         
         # Callbacks
         # Nota: Pruning no está soportado en optimización multiobjetivo
@@ -1322,7 +1334,7 @@ def train_lstm_multiobj(x_train: np.ndarray, y_train: np.ndarray, x_val: np.ndar
                 restore_best_weights=True,
                 verbose=0
             ),
-            LogEpochCallback()
+            LogEpochCallback(log_interval_minutes=30)  # Loguear cada 30 minutos
         ]
         
         # Entrenar
