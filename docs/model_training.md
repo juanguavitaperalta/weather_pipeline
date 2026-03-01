@@ -122,10 +122,10 @@ En este caso, las curvas de entrenamiento y validación convergen al valor de de
 | **Ridge**   | 1.38°C | 1.08°C | 0.84 |
 | Elastic Net | 1.41°C | 1.10°C | 0.83 |
 | **XGBoost** | 1.32°C | 1.01°C | 0.86 |
-| **LSTM**    | 1.29°C | 1.03°C |  -   | 1.44°C          |
-| **LSTM Multiobj** | 1.10°C | 0.85°C | 0.85 |
+| **LSTM**    | 1.29°C | 1.03°C |   -   |
+| **LSTM Multiobj** | 1.27°C | 0.98°C | 0.87 |
 
-**Modelo seleccionado:** XGBoost por su mejor rendimiento en RMSE y MAE.
+**Modelo seleccionado:** XGBoost por su mejor rendimiento en RMSE y MAE, seguido cercanamente por LSTM Multiobjetivo.
 
 ---
 
@@ -272,6 +272,127 @@ Comparación entre predicciones del modelo LSTM y valores reales en el conjunto 
 
 ---
 
+## 5. Entrenamiento LSTM Multiobjetivo con Optuna
+
+### LSTM Multiobjetivo - Diagrama de Optimización
+
+```mermaid
+flowchart TD
+  X[Ventanas temporales 48h] --> S[Escalado StandardScaler]
+  S --> C[Conv1D: Extracción de patrones]
+  C --> L1[LSTM Capa 1: Memoria temporal]
+  L1 --> L2[LSTM Capa 2: Abstracción]
+  L2 --> D[Dense: Predicción]
+  D --> Y[Temperatura t+3h]
+  
+  O[Optuna Multiobjetivo] -.-> |Optimiza MAE + RMSE| C
+  O -.-> L1
+  O -.-> L2
+  
+  Y --> M1[Métrica 1: MAE]
+  Y --> M2[Métrica 2: RMSE]
+  M1 & M2 --> P[Pareto Front]
+```
+
+### Arquitectura y Optimización Multiobjetivo
+
+El modelo LSTM Multiobjetivo mejora el LSTM básico optimizando **simultáneamente dos objetivos**:
+
+**Objetivos optimizados:**
+1. **Minimizar MAE** (Mean Absolute Error) - Métrica comparable con XGBoost
+2. **Minimizar RMSE** (Root Mean Square Error) - Penaliza errores grandes
+
+**Ventajas vs LSTM de objetivo único:**
+- ✅ Optimiza directamente ambas métricas (MAE y RMSE)
+- ✅ Encuentra soluciones de Pareto óptimas
+- ✅ Loss function alineada con métrica objetivo (`loss="mae"`)
+- ✅ Pruning inteligente para ahorrar tiempo de cómputo
+
+### Hiperparámetros del Modelo Multiobjetivo
+
+Los mejores hiperparámetros encontrados por Optuna:
+
+```json
+{
+    "filters": 48,
+    "kernel_size": 4,
+    "lstm1_units": 64,
+    "lstm2_units": 16,
+    "dropout": 0.240,
+    "recurrent_dropout": 0.103,
+    "learning_rate": 0.000156,
+    "batch_size": 32,
+    "use_causal_padding": false,
+    "optimizer": "adamw"
+}
+```
+
+**Métricas finales:**
+- **Test RMSE:** 1.27°C  
+- **Test MAE:** 0.98°C
+- **Validation Loss:** 0.89°C  
+- **Best Epoch:** 288 de 328
+- **Best Trial:** #7 de 30
+
+### Curvas de Entrenamiento LSTM Multiobjetivo
+
+<p align="center">
+  <img src="../reports/figures/curvas%20aprendizaje/lstm_multiobj/lstm_learning_curves.png" width="700">
+</p>
+
+Las curvas muestran:
+- Convergencia suave entre entrenamiento y validación
+- Early stopping previene overfitting
+- Modelo generaliza bien a datos no vistos
+
+### Frente de Pareto
+
+<p align="center">
+  <img src="../reports/figures/optuna_multiobj/pareto_front.png" width="700">
+</p>
+
+El frente de Pareto muestra las soluciones no dominadas en el espacio MAE-RMSE. El mejor trial balanceó ambas métricas óptimamente.
+
+### Timeline de Optimización
+
+<p align="center">
+  <img src="../reports/figures/optuna_multiobj/timeline.png" width="700">
+</p>
+
+Visualiza la duración de cada trial. Algunos trials fueron podados tempranamente por no ser prometedores (pruning activo).
+
+### Importancia de Hiperparámetros
+
+<p align="center">
+  <img src="../reports/figures/optuna_multiobj/param_importances.png" width="700">
+</p>
+
+Los hiperparámetros más importantes son `learning_rate`, `lstm1_units`, y `dropout`, que tienen mayor impacto en las métricas finales.
+
+### Predicciones LSTM Multiobjetivo
+
+<p align="center">
+  <img src="../reports/figures/predicciones/lstm_multiobj_pred_vs_actual.png" width="700">
+</p>
+
+Comparación visual entre predicciones y valores reales en el conjunto de test.
+
+### Ventajas del LSTM Multiobjetivo
+
+✅ **Balance MAE-RMSE**: Optimiza ambas métricas simultáneamente  
+✅ **Mejor MAE**: 0.98°C vs 1.03°C del LSTM básico  
+✅ **Mejor RMSE**: 1.27°C vs 1.29°C del LSTM básico  
+✅ **Pareto-óptimo**: Encuentra soluciones no dominadas  
+✅ **Eficiencia**: Pruning reduce tiempo de búsqueda
+
+### Limitaciones
+
+⚠️ **Complejidad**: Mayor tiempo de entrenamiento que LSTM básico  
+⚠️ **Interpretabilidad**: Difícil entender trade-offs de Pareto  
+⚠️ **Recursos**: Requiere más trials y memoria
+
+---
+
 ## 📊 Comparación Final de Modelos
 
 | Modelo      | RMSE   | MAE   | R²   | Validation Loss |
@@ -281,8 +402,19 @@ Comparación entre predicciones del modelo LSTM y valores reales en el conjunto 
 | Elastic Net | 1.41°C | 1.10°C | 0.83 | -               |
 | **XGBoost** | 1.00°C | 0.76°C | 0.86 | -               |
 | **LSTM**    | 1.29°C | 1.03°C |  -   | 1.44°C          |
-| **LSTM Multiobj** | 1.10°C | 0.85°C | 0.85 | -               |
+| **LSTM Multiobj** | 1.27°C | 0.98°C | 0.87 | 0.89°C          |
 
+---
+
+## 📝 Nota de Versión
+
+**Estado actual del LSTM Multiobjetivo:** Versión restaurada (v3.0.0) entrenada el 2026-02-15.
+
+**Razón:** Una versión más reciente del modelo mostró desmejora en RMSE (1.40°C vs 1.27°C), por lo que se decidió mantener la versión anterior que ofrece mejor balance entre MAE y RMSE.
+
+**Comparación:**
+- ✅ **Versión actual (v3.0.0)**: RMSE=1.27°C, MAE=0.98°C
+- ❌ **Versión rechazada**: RMSE=1.40°C, MAE=1.09°C
 
 ---
 
